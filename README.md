@@ -22,6 +22,8 @@ Hình sự (100/2015/QH13), Tố tụng hình sự (101/2015/QH13) – cùng vă
 
 ```
 venv\Scripts\python.exe src\clean\build_goc.py
+venv\Scripts\python.exe src\clean\doc_lenh.py
+venv\Scripts\python.exe src\clean\ap_lenh.py
 ```
 
 ## Trạng thái (17/11/2026)
