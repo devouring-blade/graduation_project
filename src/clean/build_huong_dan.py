@@ -1,13 +1,12 @@
-"""Clean – Phần 3, bước 1: tách Điều và cắt chunk các văn bản hướng dẫn (data/raw/huong_dan).
-
-Chạy sau build_goc.py:  venv\\Scripts\\python.exe src\\clean\\build_huong_dan.py
+"""Bước 2: tách các văn bản hướng dẫn (data/raw/huong_dan) thành cây Điều/Khoản/Điểm.
 
 Thông tin văn bản đọc từ chính văn bản: loại, trích yếu, ngày ban hành, ngày hiệu lực,
 bộ luật được hướng dẫn (nhắc trong trích yếu, nếu không có thì trong phần "Căn cứ").
 Văn bản nào không đọc được ngày hiệu lực -> ghi trong config/van_ban_huong_dan.json (do người điền).
 
-Đầu ra data/processed/: huong_dan_van_ban.jsonl, huong_dan_dieu.jsonl
-(chunk của văn bản hướng dẫn do ap_lenh.py sinh, cùng với phiên bản theo thời gian).
+Văn bản thiếu ngày hiệu lực hoặc không hướng dẫn bộ luật gốc nào thì không đưa vào.
+
+Đầu ra data/processed/trung_gian/: huong_dan_van_ban.jsonl, huong_dan_dieu.jsonl
 """
 from __future__ import annotations
 
@@ -17,14 +16,13 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from build_goc import write_jsonl  # noqa: E402
+from build_goc import dieu_record, read_jsonl, write_jsonl  # noqa: E402
 from cau_truc import parse_van_ban, render_dieu_body  # noqa: E402
-from chunking import sha  # noqa: E402
 from html_text import read_lines  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
-OUT = DATA / "processed"
+TG = DATA / "processed" / "trung_gian"
 CONFIG = ROOT / "config" / "van_ban_huong_dan.json"
 
 NGAY = r"ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})"
@@ -99,9 +97,8 @@ def thong_tin(so_hieu: str, lines, parsed) -> dict:
 
 def main() -> int:
     cfg = json.loads(CONFIG.read_text(encoding="utf-8")) if CONFIG.exists() else {}
-    manifest = [json.loads(x) for x in (DATA / "raw" / "manifest.jsonl").read_text(encoding="utf-8").splitlines() if x.strip()]
     vbs, dieu_rows, chua_ro = [], [], []
-    for m in [r for r in manifest if r["nhom"] == "huong_dan"]:
+    for m in [r for r in read_jsonl(DATA / "raw" / "manifest.jsonl") if r["nhom"] == "huong_dan"]:
         lines = read_lines(DATA / m["file"])
         parsed = parse_van_ban(lines)
         info = thong_tin(m["so_hieu"], lines, parsed)
@@ -111,29 +108,17 @@ def main() -> int:
               "ten_trich_dan": ten_ngan, "nam": "",
               "linh_vuc": next((lv for _, sh, lv in BO_LUAT if sh in info["huong_dan_bo_luat"]), None),
               "so_dieu": len(parsed["dieu"]), "file": m["file"], "sha256": m["sha256"], "url": m.get("url")}
-        vbs.append(vb)
         if not vb["ngay_hieu_luc"] or not vb["huong_dan_bo_luat"] or not parsed["dieu"]:
             chua_ro.append(vb)
             continue
-        for d in parsed["dieu"]:
-            did = f"{m['so_hieu']}#D{d['so_dieu']}"
-            body = render_dieu_body(d)
-            dieu_rows.append({"dieu_id": did, "phien_ban_id": f"{did}@{vb['ngay_hieu_luc']}", "so_hieu": m["so_hieu"],
-                              "so_dieu": d["so_dieu"], "thu_tu": d["thu_tu"], "tieu_de": d["tieu_de"],
-                              "vi_tri": d["vi_tri"], "doan_dan": d["doan_dan"], "diem": d["diem"], "khoan": d["khoan"],
-                              "trang_thai": "hieu_luc", "valid_from": vb["ngay_hieu_luc"], "valid_to": None,
-                              "nguon_thay_doi": [], "sha256": sha(f"Điều {d['so_dieu']}. {d['tieu_de']}\n{body}")})
-    OUT.mkdir(parents=True, exist_ok=True)
-    write_jsonl(OUT / "huong_dan_van_ban.jsonl", vbs)
-    write_jsonl(OUT / "huong_dan_dieu.jsonl", dieu_rows)
-    print(f"{len(vbs)} văn bản hướng dẫn, {len(dieu_rows)} Điều")
-    for v in vbs:
-        print(f"  {v['so_hieu']:<44} {v['ngay_hieu_luc'] or '?':<11} {','.join(v['huong_dan_bo_luat']) or '?':<28} "
-              f"{v['so_dieu']:>3} Điều | {v['trich_yeu'][:60]}")
-    if chua_ro:
-        print("\nCHƯA ĐƯA VÀO (thiếu ngày hiệu lực / bộ luật / Điều) – điền vào config/van_ban_huong_dan.json:")
-        for v in chua_ro:
-            print(f"  {v['so_hieu']}: hiệu lực={v['ngay_hieu_luc']}, bộ luật={v['huong_dan_bo_luat']}, Điều={v['so_dieu']}")
+        vbs.append(vb)
+        dieu_rows += [dieu_record(m["so_hieu"], d, vb["ngay_hieu_luc"]) for d in parsed["dieu"]]
+    write_jsonl(TG / "huong_dan_van_ban.jsonl", vbs)
+    write_jsonl(TG / "huong_dan_dieu.jsonl", dieu_rows)
+    print(f"  {len(vbs)} văn bản hướng dẫn, {len(dieu_rows)} Điều")
+    for v in chua_ro:
+        print(f"  CHƯA ĐƯA VÀO {v['so_hieu']}: hiệu lực={v['ngay_hieu_luc']}, bộ luật={v['huong_dan_bo_luat']} "
+              f"(bổ sung ở config/van_ban_huong_dan.json nếu cần)")
     return 0
 
 

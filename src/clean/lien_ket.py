@@ -1,21 +1,22 @@
-"""Clean – Phần 3, bước 2: liên kết hai chiều văn bản hướng dẫn <-> Điều của bộ luật gốc.
+"""Bước 5: liên kết hai chiều văn bản hướng dẫn <-> Điều luật, xuất kết quả cuối.
 
-Chạy sau ap_lenh.py:  venv\\Scripts\\python.exe src\\clean\\lien_ket.py
+Chunk hướng dẫn: huong_dan_cho = [{dieu_id, khoan, diem, dieu_phien_ban_id, trang_thai, nguon}]
+    - nguon "dan_chieu": chunk nêu rõ "… Điều 65 của Bộ luật Hình sự", "Điều 65 BLHS", "Tội … (Điều 248)".
+    - nguon "trich_yeu": trích yếu văn bản nêu Điều ("Hướng dẫn áp dụng Điều 65 của Bộ luật Hình sự")
+      -> gắn cho mọi chunk của văn bản đó.
+    - trang_thai "khop": Điều chưa đổi kể từ khi hướng dẫn có hiệu lực; "viet_cho_ban_cu": Điều có phiên
+      bản mới bắt đầu sau ngày hướng dẫn có hiệu lực (khi hướng dẫn còn hiệu lực).
+    - Chunk không nêu Điều nào và văn bản có trích yếu chung chung -> huong_dan_cho rỗng.
+Chunk Điều luật: huong_dan_boi = [{so_hieu, chunk_id, phien_ban_id, trang_thai}] – gắn vào chunk của đúng
+    Điều (đúng Khoản nếu nêu) khi hai khoảng hiệu lực giao nhau.
 
-Chunk hướng dẫn: huong_dan_cho = [{dieu_id, khoan, diem, dieu_phien_ban_id, trang_thai}]
-    - Dẫn chiếu nêu rõ bộ luật ("điểm b khoản 1 Điều 65 của Bộ luật Hình sự", "Điều 65 BLHS") ->
-      trang_thai "khop" (Điều chưa đổi kể từ khi hướng dẫn có hiệu lực) hoặc "viet_cho_ban_cu"
-      (Điều có phiên bản mới bắt đầu sau ngày hướng dẫn có hiệu lực, khi hướng dẫn còn hiệu lực).
-    - Điều nêu trong trích yếu văn bản ("Hướng dẫn áp dụng Điều 65 của Bộ luật Hình sự") -> gắn cho
-      mọi chunk của văn bản đó (nguon "trich_yeu"); dẫn chiếu trong chunk có nguon "dan_chieu".
-    - Văn bản có trích yếu chung chung ("một số quy định của Bộ luật Dân sự") và chunk không dẫn chiếu
-      Điều nào -> huong_dan_cho rỗng (không xác định được Điều).
-Chunk bộ luật gốc: huong_dan_boi = [{chunk_id, phien_ban_id, trang_thai}] –
-    gắn vào chunk của đúng Điều (và đúng Khoản nếu nêu), khi hai khoảng hiệu lực giao nhau.
-Dẫn chiếu tới bộ luật năm khác (vd. "Bộ luật Dân sự năm 2005") bị bỏ qua.
-
-Đầu ra: data/processed/corpus_luat.jsonl (chunk Điều luật – dùng để tìm kiếm),
-        corpus_huong_dan.jsonl (chunk hướng dẫn – chỉ tra theo mã), thong_ke_lien_ket.json
+Kết quả cuối (data/processed/):
+    corpus_luat.jsonl        chunk Điều luật – kho dùng để tìm kiếm
+    corpus_huong_dan.jsonl   chunk hướng dẫn – tìm phụ / tra theo mã từ huong_dan_boi
+    huong_dan_toan_van.jsonl toàn văn từng văn bản hướng dẫn theo phiên bản [valid_from, valid_to) –
+                             đưa cho agent khi đã có Điều luật (tra bằng so_hieu + ngày)
+    van_ban.jsonl            thông tin mọi văn bản trong corpus
+    thong_ke.json
 """
 from __future__ import annotations
 
@@ -25,8 +26,14 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+from build_goc import read_jsonl, write_jsonl  # noqa: E402
+from cau_truc import render_dieu_body  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "data" / "processed"
+TG = OUT / "trung_gian"
+GOC = ("91/2015/QH13", "92/2015/QH13", "100/2015/QH13", "101/2015/QH13")
 
 D = r"[a-zđ]"
 N = r"\d+[a-zđ]?"
@@ -81,29 +88,55 @@ def dan_chieu(text: str) -> list[tuple[str, str, str | None, str | None]]:
 
 
 def _mo_rong(sh: str, g: dict) -> list[tuple]:
+    """Một cụm vị trí -> các (bộ luật, Điều, Khoản, Điểm). "khoản 2 Điều 5 và Điều 7": khoản chỉ thuộc
+    Điều đầu; "khoản 1 các điều 134, 135": khoản thuộc từng Điều."""
+    ns = [str(x) for x in range(int(g["n1"]), int(g["n2"]) + 1)] if g["n1"] else _list(g["n"])
+    ks = ([str(x) for x in range(int(g["k1"]), int(g["k2"]) + 1)] if g["k1"]
+          else _list(g["k"]) if g["k"] else [None])
+    ps = (list(DIEM_ORDER[DIEM_ORDER.index(g["d1"]):DIEM_ORDER.index(g["d2"]) + 1]) if g["d1"]
+          else _list(g["d"]) if g["d"] else [None])
     out = []
-    if True:
-        ns = [str(x) for x in range(int(g["n1"]), int(g["n2"]) + 1)] if g["n1"] else _list(g["n"])
-        ks = ([str(x) for x in range(int(g["k1"]), int(g["k2"]) + 1)] if g["k1"]
-              else _list(g["k"]) if g["k"] else [None])
-        ps = (list(DIEM_ORDER[DIEM_ORDER.index(g["d1"]):DIEM_ORDER.index(g["d2"]) + 1]) if g["d1"]
-              else _list(g["d"]) if g["d"] else [None])
-        for i, n in enumerate(ns):
-            if i == 0 or g["cac"]:
-                out += [(sh, n, k, p) for k in ks for p in ps]
-            else:
-                out.append((sh, n, None, None))
+    for i, n in enumerate(ns):
+        if i == 0 or g["cac"]:
+            out += [(sh, n, k, p) for k in ks for p in ps]
+        else:
+            out.append((sh, n, None, None))
+    return out
+
+
+def toan_van(vb: dict, dieu_rows: list[dict]) -> list[dict]:
+    """Toàn văn một văn bản hướng dẫn cho mỗi khoảng thời gian mà nội dung không đổi."""
+    rows = [r for r in dieu_rows if not r["chua_tung_ap_dung"]]
+    moc = sorted({r["valid_from"] for r in rows} | {r["valid_to"] for r in rows if r["valid_to"]})
+    out = []
+    for i, a in enumerate(moc):
+        b = moc[i + 1] if i + 1 < len(moc) else None
+        hl = sorted((r for r in rows if r["trang_thai"] == "hieu_luc" and r["valid_from"] <= a
+                     and (r["valid_to"] is None or a < r["valid_to"])), key=lambda r: r["thu_tu"])
+        if not hl:
+            continue
+        text = vb["ten"] + "\n\n" + "\n\n".join(
+            f"Điều {r['so_dieu']}. {r['tieu_de']}".rstrip(". ") + "\n" + render_dieu_body(r) for r in hl)
+        if out and out[-1]["text"] == text:
+            out[-1]["valid_to"] = b
+            continue
+        out.append({"phien_ban_id": f"{vb['so_hieu']}@{a}", "so_hieu": vb["so_hieu"], "ten": vb["ten"],
+                    "ten_trich_dan": vb["ten_trich_dan"], "loai": vb["loai"],
+                    "huong_dan_bo_luat": vb["huong_dan_bo_luat"], "valid_from": a, "valid_to": b,
+                    "so_dieu": len(hl), "so_tu": len(text.split()), "text": text})
     return out
 
 
 def main() -> int:
-    vb = {json.loads(x)["so_hieu"]: json.loads(x) for x in (OUT / "huong_dan_van_ban.jsonl").read_text(encoding="utf-8").splitlines()}
-    chunks = [json.loads(x) for x in (OUT / "chunks_phien_ban.jsonl").read_text(encoding="utf-8").splitlines()]
+    vb_goc = read_jsonl(TG / "goc_van_ban.jsonl")
+    vb_hd = read_jsonl(TG / "huong_dan_van_ban.jsonl")
+    vb = {r["so_hieu"]: r for r in vb_hd}
+    chunks = read_jsonl(TG / "chunks_phien_ban.jsonl")
+    dieu_pb = read_jsonl(TG / "dieu_phien_ban.jsonl")
     versions = defaultdict(list)          # dieu_id -> [(valid_from, valid_to, phien_ban_id)] của bộ luật gốc
-    for x in (OUT / "dieu_phien_ban.jsonl").read_text(encoding="utf-8").splitlines():
-        r = json.loads(x)
-        if r["so_hieu"] in ("91/2015/QH13", "92/2015/QH13", "100/2015/QH13", "101/2015/QH13") and not r["chua_tung_ap_dung"]:
-            versions[r["dieu_id"]].append((r["valid_from"], r["valid_to"], r["phien_ban_id"], r["trang_thai"]))
+    for r in dieu_pb:
+        if r["so_hieu"] in GOC and not r["chua_tung_ap_dung"]:
+            versions[r["dieu_id"]].append((r["valid_from"], r["valid_to"], r["phien_ban_id"]))
     for v in versions.values():
         v.sort()
 
@@ -118,14 +151,11 @@ def main() -> int:
                 "trang_thai": "viet_cho_ban_cu" if doi_sau else "khop", "nguon": nguon}
 
     tk = Counter()
-    bo_qua = Counter()
     for c in chunks:
         if c["nhom"] != "huong_dan":
             continue
         v = vb[c["so_hieu"]]
         links = []
-        # 1) dẫn chiếu nêu rõ trong chunk; 2) Điều nêu trong trích yếu văn bản ("Hướng dẫn áp dụng Điều 65
-        #    của Bộ luật Hình sự") – mọi Điều của văn bản đó đều hướng dẫn Điều này
         for nguon, text in (("dan_chieu", c["noi_dung"]), ("trich_yeu", v["trich_yeu"])):
             refs = dan_chieu(text)
             # Văn bản hướng dẫn BLHS ghi tội kèm số Điều trong ngoặc: "Tội sản xuất trái phép chất ma túy (Điều 248)"
@@ -138,15 +168,10 @@ def main() -> int:
                 l = lien_ket(sh, n, k, p, c["valid_from"], c["valid_to"], nguon)
                 if l:
                     links.append(l)
-                elif nguon == "dan_chieu":
-                    bo_qua[f"{sh}#D{n}"] += 1
         c["huong_dan_cho"] = links
-        tk["chunk_huong_dan"] += 1
-        tk["chunk_co_lien_ket"] += bool(links)
-        for l in links:
-            tk[l["trang_thai"]] += 1
+        tk["chunk_huong_dan_co_lien_ket"] += bool(links)
 
-    # chiều ngược: gắn vào chunk bộ luật gốc
+    # chiều ngược: gắn vào chunk Điều luật
     by_dieu = defaultdict(list)
     for c in chunks:
         if c["nhom"] == "goc":
@@ -161,24 +186,28 @@ def main() -> int:
                     c["chunk_id"].startswith(f"{c['dieu_id']}#K{l['khoan']}")
                 giao = (c["valid_to"] is None or h["valid_from"] < c["valid_to"]) and \
                        (h["valid_to"] is None or c["valid_from"] < h["valid_to"])
-                if hop_khoan and giao and not any(x["chunk_id"] == h["chunk_id"] for x in c["huong_dan_boi"]):
-                    c["huong_dan_boi"].append({"chunk_id": h["chunk_id"], "phien_ban_id": h["phien_ban_id"],
+                if hop_khoan and giao and not any(x["phien_ban_id"] == h["phien_ban_id"] for x in c["huong_dan_boi"]):
+                    c["huong_dan_boi"].append({"so_hieu": h["so_hieu"], "chunk_id": h["chunk_id"],
+                                               "phien_ban_id": h["phien_ban_id"],
                                                "trang_thai": "viet_cho_ban_cu" if c["valid_from"] > h["valid_from"] else "khop"})
-    tk["chunk_goc_duoc_huong_dan"] = sum(bool(c.get("huong_dan_boi")) for c in chunks if c["nhom"] == "goc")
 
-    # Hai kho riêng: chỉ chunk Điều luật được đưa vào tìm kiếm; chunk hướng dẫn chỉ tra theo mã
-    # khi một Điều luật trỏ tới (huong_dan_boi).
-    for name, nhom in (("corpus_luat.jsonl", "goc"), ("corpus_huong_dan.jsonl", "huong_dan")):
-        with (OUT / name).open("w", encoding="utf-8", newline="\n") as f:
-            for c in chunks:
-                if c["nhom"] == nhom:
-                    f.write(json.dumps(c, ensure_ascii=False) + "\n")
-    (OUT / "corpus.jsonl").unlink(missing_ok=True)
-    (OUT / "thong_ke_lien_ket.json").write_text(json.dumps({"thong_ke": tk, "dan_chieu_khong_co_dieu": bo_qua},
-                                                         ensure_ascii=False, indent=2), encoding="utf-8")
-    print(dict(tk))
-    if bo_qua:
-        print("Dẫn chiếu tới Điều không có trong dữ liệu:", dict(bo_qua.most_common(10)))
+    luat = [c for c in chunks if c["nhom"] == "goc"]
+    hd = [c for c in chunks if c["nhom"] == "huong_dan"]
+    tv = [x for so_hieu, v in vb.items() for x in toan_van(v, [r for r in dieu_pb if r["so_hieu"] == so_hieu])]
+    write_jsonl(OUT / "corpus_luat.jsonl", luat)
+    write_jsonl(OUT / "corpus_huong_dan.jsonl", hd)
+    write_jsonl(OUT / "huong_dan_toan_van.jsonl", tv)
+    write_jsonl(OUT / "van_ban.jsonl", vb_goc + vb_hd)
+    nk = read_jsonl(TG / "ap_lenh_nhat_ky.jsonl")
+    tk.update({"chunk_luat": len(luat), "chunk_luat_dang_hieu_luc": sum(c["valid_to"] is None for c in luat),
+               "chunk_luat_co_huong_dan": sum(bool(c["huong_dan_boi"]) for c in luat),
+               "chunk_huong_dan": len(hd), "van_ban_huong_dan": len(vb_hd), "toan_van_phien_ban": len(tv),
+               "thao_tac_sua_doi_da_ap": sum(e["ket_qua"] == "da_ap" for e in nk),
+               "thao_tac_sua_doi_chua_ap": sum(e["ket_qua"] == "loi" for e in nk)})
+    (OUT / "thong_ke.json").write_text(json.dumps(tk, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"  corpus_luat {tk['chunk_luat']} chunk ({tk['chunk_luat_co_huong_dan']} có hướng dẫn) | "
+          f"corpus_huong_dan {tk['chunk_huong_dan']} chunk ({tk['chunk_huong_dan_co_lien_ket']} có liên kết) | "
+          f"toàn văn {tk['toan_van_phien_ban']} bản / {tk['van_ban_huong_dan']} văn bản")
     return 0
 
 

@@ -1,10 +1,10 @@
-"""Clean – Phần 2, bước 1: đọc câu lệnh sửa đổi từ mọi văn bản trong sua_doi/ và lien_quan/.
+"""Bước 3: đọc câu lệnh sửa đổi từ mọi văn bản trong sua_doi/ và lien_quan/.
 
 Không mặc định văn bản nào sửa luật nào: mỗi câu lệnh tự xác định luật bị sửa từ chính câu
 ("… Điều 32 của Bộ luật Tố tụng dân sự số 92/2015/QH13 …") hoặc từ dòng phạm vi bao ngoài
 ("Điều 1. Sửa đổi, bổ sung một số điều của Bộ luật Hình sự", "1. Sửa đổi … của Luật X …:").
 
-Mỗi câu lệnh -> một bản ghi trong data/processed/lenh_sua_doi.jsonl:
+Mỗi câu lệnh -> một bản ghi trong data/processed/trung_gian/lenh_sua_doi.jsonl:
     id, van_ban, ngay_hieu_luc, bo_luat (số hiệu luật bị sửa, hoặc "ngoai:<tên>"),
     loai: sua | bo_sung | bai_bo | cum_tu | khung (dòng phạm vi, không tự sửa gì)
     vi_tri: [{dieu, khoan, diem, ten}], chuong: [...], noi_dung: [dòng] (nội dung trong ngoặc kép),
@@ -20,12 +20,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from html_text import Line, read_lines  # noqa: E402
+from html_text import read_lines  # noqa: E402
 from vi_tri import doc_vi_tri  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
-OUT = DATA / "processed"
+TG = DATA / "processed" / "trung_gian"
 CONFIG = ROOT / "config" / "sua_doi.json"
 
 # ------------------------------------------------------------------ nhận diện luật
@@ -374,12 +374,12 @@ def main() -> int:
         cmds, meta = doc_van_ban(DATA / r["file"], r["so_hieu"], cfg, r["nhom"])
         all_cmd += cmds
         metas.append(meta)
-    OUT.mkdir(parents=True, exist_ok=True)
-    with (OUT / "lenh_sua_doi.jsonl").open("w", encoding="utf-8", newline="\n") as f:
+    TG.mkdir(parents=True, exist_ok=True)
+    with (TG / "lenh_sua_doi.jsonl").open("w", encoding="utf-8", newline="\n") as f:
         for c in all_cmd:
             f.write(json.dumps(c, ensure_ascii=False) + "\n")
-    (OUT / "van_ban_sua_doi.json").write_text(json.dumps(metas, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"{len(all_cmd)} câu lệnh từ {len(metas)} văn bản")
+    (TG / "van_ban_sua_doi.json").write_text(json.dumps(metas, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"  {len(all_cmd)} câu lệnh từ {len(metas)} văn bản sửa đổi")
     return 0
 
 

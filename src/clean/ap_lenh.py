@@ -1,11 +1,11 @@
-"""Clean – Phần 2, bước 2: áp câu lệnh sửa đổi lên bộ luật gốc, dựng phiên bản theo thời gian.
+"""Bước 4: áp câu lệnh sửa đổi lên bộ luật gốc và văn bản hướng dẫn, dựng phiên bản theo thời gian,
+cắt chunk cho từng phiên bản.
 
-Đầu vào : data/processed/dieu.jsonl, van_ban.jsonl (Phần 1), lenh_sua_doi.jsonl (doc_lenh.py)
-Đầu ra  : data/processed/
-    dieu_phien_ban.jsonl    mỗi dòng một phiên bản Điều [valid_from, valid_to)
-    chunks_phien_ban.jsonl  chunk theo phiên bản; chunk không đổi chữ thì giữ một bản (kéo dài hiệu lực)
-    ap_lenh_nhat_ky.jsonl   mỗi câu lệnh (nhắm bộ luật gốc): đã áp / lỗi + lý do
-    thong_ke_phien_ban.json
+Đầu vào/ra: data/processed/trung_gian/
+    vào: goc_*.jsonl, huong_dan_*.jsonl, lenh_sua_doi.jsonl
+    ra : dieu_phien_ban.jsonl    mỗi dòng một phiên bản Điều [valid_from, valid_to)
+         chunks_phien_ban.jsonl  chunk theo phiên bản; chunk không đổi chữ thì giữ một bản (kéo dài hiệu lực)
+         ap_lenh_nhat_ky.jsonl   mỗi thao tác sửa đổi: đã áp / lỗi + lý do
 Nguyên tắc:
 - Câu lệnh áp theo thứ tự ngày hiệu lực; không sửa đè – phiên bản cũ đóng lại bằng valid_to.
 - Câu lệnh nào không áp được chắc chắn -> ghi lỗi, KHÔNG áp, không đoán.
@@ -25,12 +25,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from cau_truc import (DIEM_ORDER, _parse_body, _thu_tu, khoa_khoan,  # noqa: E402
                       parse_van_ban, render_dieu_body)
+from build_goc import read_jsonl, write_jsonl  # noqa: E402
 from chunking import chunk_dieu, sha  # noqa: E402
 from html_text import Line, norm  # noqa: E402
 
-CODE_VERSION = "phien-ban-1.0"
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "data" / "processed"
+TG = ROOT / "data" / "processed" / "trung_gian"
 RE_DIEU_HEAD = re.compile(r"^Điều\s+\d+[a-zđ]?\s*\.")
 
 
@@ -426,22 +426,15 @@ def _cung_vb(nhan: str | None, so_hieu: str) -> bool:
 
 def main() -> int:
     # Bộ luật gốc (Phần 1) + văn bản hướng dẫn (Phần 3): cùng được áp sửa đổi, dựng phiên bản, cắt chunk
-    vb = {}
-    for name in ("van_ban.jsonl", "huong_dan_van_ban.jsonl"):
-        if (OUT / name).exists():
-            vb.update({json.loads(x)["so_hieu"]: json.loads(x) for x in (OUT / name).read_text(encoding="utf-8").splitlines()})
+    vb = {r["so_hieu"]: r for r in read_jsonl(TG / "goc_van_ban.jsonl") + read_jsonl(TG / "huong_dan_van_ban.jsonl")}
     base = defaultdict(dict)
-    dieu_lines = (OUT / "dieu.jsonl").read_text(encoding="utf-8").splitlines()
-    if (OUT / "huong_dan_dieu.jsonl").exists():
-        dieu_lines += (OUT / "huong_dan_dieu.jsonl").read_text(encoding="utf-8").splitlines()
-    for line in dieu_lines:
-        r = json.loads(line)
+    for r in read_jsonl(TG / "goc_dieu.jsonl") + read_jsonl(TG / "huong_dan_dieu.jsonl"):
         base[r["so_hieu"]][r["so_dieu"]] = {k: r[k] for k in ("so_dieu", "thu_tu", "tieu_de", "vi_tri", "doan_dan", "diem", "khoan", "trang_thai")}
-    lenh = [json.loads(x) for x in (OUT / "lenh_sua_doi.jsonl").read_text(encoding="utf-8").splitlines()]
+    lenh = read_jsonl(TG / "lenh_sua_doi.jsonl")
     thu_tu_vb = {v: i for i, v in enumerate(dict.fromkeys(c["van_ban"] for c in lenh))}
 
-    nhat_ky, dieu_rows, chunk_rows = [], [], []
-    tk = {"code_version": CODE_VERSION, "bo_luat": {}}
+    nhat_ky, dieu_rows, chunk_rows, loi = [], [], [], []
+    tk = {}
 
     for sh, state0 in base.items():
         ngay0 = vb[sh]["ngay_hieu_luc"]
@@ -492,7 +485,7 @@ def main() -> int:
             state = new
 
         # --- xuất phiên bản
-        n_pb, n_ctua, vb_info = 0, 0, vb[sh]
+        n_pb, n_ctua = 0, 0
         for s, hist in sorted(lich_su.items(), key=lambda kv: _key_dieu(kv[0])):
             did = f"{sh}#D{s}"
             for j, (vf, a, srcs) in enumerate(hist):
@@ -506,7 +499,7 @@ def main() -> int:
                        "sha256": sha(f"Điều {s}. {a['tieu_de']}\n{body}")}
                 dieu_rows.append(rec)
                 n_pb += 1
-        tk["bo_luat"][sh] = {"so_phien_ban_dieu": n_pb, "so_dieu_co_thay_doi": sum(len(h) > 1 for h in lich_su.values()),
+        tk[sh] = {"so_phien_ban_dieu": n_pb, "so_dieu_co_thay_doi": sum(len(h) > 1 for h in lich_su.values()),
                              "phien_ban_chua_tung_ap_dung": n_ctua}
 
     # --- chunk theo phiên bản, gộp chunk không đổi chữ
@@ -524,6 +517,10 @@ def main() -> int:
                 continue
             v = vb[r["so_hieu"]]
             chs = chunk_dieu(v, r)
+            # mọi dòng của Điều phải nằm trong ít nhất một chunk
+            all_text = "\n".join(ch["text"] for ch in chs)
+            loi += [f"{r['phien_ban_id']}: dòng bị mất khi cắt chunk: {line[:60]}"
+                    for line in render_dieu_body(r).split("\n") if line.strip() and line not in all_text]
             ids_now = set()
             for ch in chs:
                 h = sha(ch["text"])
@@ -549,7 +546,6 @@ def main() -> int:
             chunk_rows += [x for x in lst if x["valid_to"] != x["valid_from"]]
 
     # --- kiểm tra
-    loi = []
     for rows, key in ((dieu_rows, "dieu_id"), (chunk_rows, "chunk_id")):
         by = defaultdict(list)
         for r in rows:
@@ -563,26 +559,22 @@ def main() -> int:
     dup = [k for k, n in Counter(r["phien_ban_id"] for r in chunk_rows).items() if n > 1]
     loi += [f"trùng phien_ban_id chunk: {k}" for k in dup]
 
-    def w(name, rows):
-        with (OUT / name).open("w", encoding="utf-8", newline="\n") as f:
-            for r in rows:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    w("dieu_phien_ban.jsonl", dieu_rows)
-    w("chunks_phien_ban.jsonl", chunk_rows)
-    w("ap_lenh_nhat_ky.jsonl", nhat_ky)
+    if loi:
+        print("  KIỂM TRA KHÔNG ĐẠT:", *loi[:20], sep="\n    ")
+        return 1
+    write_jsonl(TG / "dieu_phien_ban.jsonl", dieu_rows)
+    write_jsonl(TG / "chunks_phien_ban.jsonl", chunk_rows)
+    write_jsonl(TG / "ap_lenh_nhat_ky.jsonl", nhat_ky)
     kq = Counter((e["bo_luat"], e["ket_qua"]) for e in nhat_ky)
-    tk["ap_lenh"] = {f"{a}|{b}": n for (a, b), n in kq.items()}
-    tk["chunk"] = {"tong": len(chunk_rows), "dang_hieu_luc": sum(r["valid_to"] is None for r in chunk_rows)}
-    tk["kiem_tra"] = {"dat": not loi, "loi": loi[:50]}
-    (OUT / "thong_ke_phien_ban.json").write_text(json.dumps(tk, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    print(f"{'Bộ luật':<15}{'đã áp':>7}{'lỗi':>6}{'PB Điều':>9}{'Điều đổi':>10}{'chưa áp dụng':>14}")
-    for sh, t in tk["bo_luat"].items():
-        print(f"{sh:<15}{kq[(sh, 'da_ap')]:>7}{kq[(sh, 'loi')]:>6}{t['so_phien_ban_dieu']:>9}"
-              f"{t['so_dieu_co_thay_doi']:>10}{t['phien_ban_chua_tung_ap_dung']:>14}")
-    print(f"Chunk: {tk['chunk']}")
-    print("Kiểm tra:", "ĐẠT" if not loi else f"KHÔNG ĐẠT {loi[:5]}")
-    return 0 if not loi else 1
+    for sh, t in tk.items():
+        if kq[(sh, "da_ap")] or kq[(sh, "loi")]:
+            print(f"  {sh:<16} áp {kq[(sh, 'da_ap')]:>3} thao tác, lỗi {kq[(sh, 'loi')]}, "
+                  f"{t['so_dieu_co_thay_doi']} Điều có thay đổi")
+    for e in nhat_ky:
+        if e["ket_qua"] == "loi":
+            print(f"  CHƯA ÁP {e['bo_luat']} ← {e['van_ban']}: {e['ly_do'][:100]}")
+    print(f"  {len(chunk_rows)} chunk theo phiên bản")
+    return 0
 
 
 if __name__ == "__main__":
