@@ -1,0 +1,51 @@
+{
+  "_ghi_chu": "Thông tin 4 bộ luật gốc mà code không tự đọc được từ HTML. ngay_hieu_luc là ngày áp dụng THỰC TẾ; nếu để null thì lấy ngày ghi trong văn bản. Mục can_kiem_tra=true: cần tra lại trên vbpl.vn trước khi chốt.",
+  "91/2015/QH13": {
+    "ten": "Bộ luật Dân sự",
+    "ten_ngan": "BLDS",
+    "nam": 2015,
+    "so_dieu_mong_doi": 689,
+    "loai": "bo_luat",
+    "linh_vuc": "dan_su",
+    "co_quan": "Quốc hội",
+    "ngay_hieu_luc": null,
+    "can_cu_hieu_luc": "Điều 689 Bộ luật Dân sự",
+    "can_kiem_tra": false
+  },
+  "92/2015/QH13": {
+    "ten": "Bộ luật Tố tụng dân sự",
+    "ten_ngan": "BLTTDS",
+    "nam": 2015,
+    "so_dieu_mong_doi": 517,
+    "loai": "bo_luat",
+    "linh_vuc": "dan_su",
+    "co_quan": "Quốc hội",
+    "ngay_hieu_luc": null,
+    "can_cu_hieu_luc": "Điều 517 Bộ luật Tố tụng dân sự (một số quy định có ngày hiệu lực riêng, chưa tách)",
+    "can_kiem_tra": false
+  },
+  "100/2015/QH13": {
+    "ten": "Bộ luật Hình sự",
+    "ten_ngan": "BLHS",
+    "nam": 2015,
+    "so_dieu_mong_doi": 426,
+    "loai": "bo_luat",
+    "linh_vuc": "hinh_su",
+    "co_quan": "Quốc hội",
+    "ngay_hieu_luc": "2018-01-01",
+    "can_cu_hieu_luc": "Nghị quyết 144/2016/QH13 lùi hiệu lực; Nghị quyết 41/2017/QH14 ấn định hiệu lực từ 01/01/2018",
+    "can_kiem_tra": true
+  },
+  "101/2015/QH13": {
+    "ten": "Bộ luật Tố tụng hình sự",
+    "ten_ngan": "BLTTHS",
+    "nam": 2015,
+    "so_dieu_mong_doi": 510,
+    "loai": "bo_luat",
+    "linh_vuc": "hinh_su",
+    "co_quan": "Quốc hội",
+    "ngay_hieu_luc": "2018-01-01",
+    "can_cu_hieu_luc": "Nghị quyết 144/2016/QH13 lùi hiệu lực; Nghị quyết 41/2017/QH14 ấn định hiệu lực từ 01/01/2018",
+    "can_kiem_tra": true
+  }
+}
