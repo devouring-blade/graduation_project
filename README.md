@@ -5,11 +5,13 @@ Hình sự (100/2015/QH13), Tố tụng hình sự (101/2015/QH13) – cùng vă
 
 - `data/raw/` – 56 văn bản HTML tải từ vbpl.vn, chia 5 nhóm; xem `data/raw/README.md`.
 - `data/processed/` – corpus đã làm sạch (sinh ra bằng code, không đưa vào git).
-- `config/van_ban_goc.json` – thông tin 4 bộ luật mà code không tự đọc được (ngày hiệu lực thực tế…).
+- `config/van_ban_goc.json` – thông tin 4 bộ luật mà code không tự đọc được (ngày hiệu lực thực tế, có nguồn).
+- `config/bo_sung_tay.json` + `data/bo_sung_tay/` – bổ sung tay cho lỗi nguồn và file bằng chứng.
 - `src/clean/` – code lớp clean:
   - `html_text.py` – HTML → danh sách dòng chữ
   - `cau_truc.py` – dòng → cây Phần/Chương/Mục/Điều/Khoản/Điểm
   - `chunking.py` – cắt chunk theo cấu trúc
+  - `bo_sung.py` – áp bổ sung tay (`config/bo_sung_tay.json`) cho lỗi nguồn vbpl
   - `build_goc.py` – Phần 1: dựng corpus 4 bộ luật gốc
 - `BAO_CAO_DU_LIEU.md` – báo cáo đầy đủ: thu thập, thiết kế, kết quả, việc còn lại.
 
@@ -22,5 +24,5 @@ venv\Scripts\python.exe src\clean\build_goc.py
 ## Trạng thái (17/11/2026)
 
 - Raw: xong.
-- Clean Phần 1 (4 bộ luật gốc, chưa ghép sửa đổi): xong – 2.142 Điều, 3.170 chunk, đạt mọi kiểm tra.
+- Clean Phần 1 (4 bộ luật gốc, chưa ghép sửa đổi): xong – 2.142 Điều, 3.170 chunk, đạt mọi kiểm tra, không còn cảnh báo mở.
 - Clean Phần 2–4, embedding, truy xuất, benchmark: chưa làm.

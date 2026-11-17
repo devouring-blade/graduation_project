@@ -363,14 +363,14 @@ Code: `src/clean/` (`build_goc.py` là điểm chạy). Đầu ra trong `data/pr
 | `van_ban.jsonl` | 4 dòng – thông tin văn bản, gồm `ngay_hieu_luc` (thực tế) và `ngay_hieu_luc_ghi_trong_vb` |
 | `dieu.jsonl` | 2.142 dòng – mỗi dòng một phiên bản Điều, giữ cây `doan_dan` / `khoan[].diem[]` / `doan_sau`, vị trí Phần/Chương/Mục/Tiểu mục |
 | `chunks.jsonl` | 3.170 chunk – `text` (đem embed, có dòng đầu tên văn bản – Chương – Điều), `noi_dung` (chữ gốc), `trich_dan`, `valid_from`/`valid_to`, `huong_dan_boi`/`huong_dan_cho` (trống) |
-| `canh_bao.jsonl` | 10 cảnh báo cần người duyệt |
+| `canh_bao.jsonl` | 10 cảnh báo, mỗi dòng có `trang_thai`: tu_dong_sua 5, da_bo_sung 2, xac_nhan_khong_loi 1, da_xac_minh 2; còn mở 0 |
 | `thong_ke.json` | số liệu + kết quả kiểm tra |
 
 | Bộ luật | Điều | Khoản | Điểm | Chunk (Điều / Khoản / Điểm) | Hiệu lực dùng |
 | --- | --- | --- | --- | --- | --- |
 | BLDS 91/2015 | 689 | 1.418 | 312 | 703 (686 / 17 / 0) | 01/01/2017 |
 | BLTTDS 92/2015 | 517 | 1.362 | 712 | 782 (468 / 254 / 60) | 01/07/2016 |
-| BLHS 100/2015 | 426 | 1.397 | 2.940 | 881 (321 / 518 / 42) | 01/01/2018 |
+| BLHS 100/2015 | 426 | 1.397 | 2.946 | 881 (321 / 518 / 42) | 01/01/2018 |
 | BLTTHS 101/2015 | 510 | 1.331 | 992 | 804 (455 / 253 / 96) | 01/01/2018 |
 
 Độ dài chunk (số từ, gồm dòng đầu): nhỏ nhất 32, trung vị 138, p95 350, lớn nhất 545.
@@ -383,21 +383,47 @@ Phát hiện thêm khi viết code:
 - `data-merged="true"` không chỉ đánh dấu tên Chương bị tách dòng mà đôi khi cả dòng nội dung
   (Điều 682 BLDS) → không gộp theo thuộc tính này; nối tên Chương/Mục theo chữ.
 - BLTTHS đánh số "Mục I"; BLDS có cấp "Tiểu mục"; tên Chương/Mục dài có thể chiếm 2 dòng.
-- **Lỗi nguồn vbpl** (đã ghi trong `canh_bao.jsonl`):
-  - BLHS Điều 251 và 252, khoản 3: **mất điểm a, b, c**; Điều 278 khoản 2: mất điểm đ.
-    Cần bổ sung tay từ bản chính thức (chưa làm, không tự đoán).
-  - BLHS Điều 142, 175, 243, 397: hai Điểm dính trên một dòng → code tự tách.
-  - BLTTDS Điều 162: "1 Trường hợp…" thiếu dấu chấm → code nhận là Khoản 1.
-- **Ngày hiệu lực**: BLHS và BLTTHS ghi 01/07/2016 nhưng bị lùi tới 01/01/2018 (NQ 144/2016/QH13,
-  NQ 41/2017/QH14). Dùng 01/01/2018 qua `config/van_ban_goc.json`; **cần tra lại để xác nhận**.
+- **Lỗi nguồn vbpl** (ghi trong `canh_bao.jsonl`, mỗi dòng có `trang_thai`):
+  - BLHS Điều 251 và 252, khoản 3: **mất điểm a, b, c** → **đã bổ sung** (xem dưới).
+  - BLHS Điều 278 khoản 2: không có điểm đ → **xác nhận không phải lỗi**: bản luatvietnam cũng
+    không có; hai nguồn độc lập giống nhau.
+  - BLHS Điều 142, 175, 243, 397: hai Điểm dính trên một dòng → code tự tách (`tu_dong_sua`).
+  - BLTTDS Điều 162: "1 Trường hợp…" thiếu dấu chấm → code nhận là Khoản 1 (`tu_dong_sua`).
+- **Ngày hiệu lực – đã xác minh** bằng văn bản gốc (lưu ở `data/bo_sung_tay/*.doc`):
+  NQ 144/2016/QH13 Điều 1 khoản 2 lùi hiệu lực BLHS và BLTTHS từ 01/07/2016; NQ 41/2017/QH14
+  Điều 1 khoản 1: từ 01/01/2018 có hiệu lực "Bộ luật Hình sự số 100/2015/QH13 đã được sửa đổi,
+  bổ sung một số điều theo Luật số 12/2017/QH14" và BLTTHS 101/2015/QH13.
   Ví dụ Điều 40 ở mục 5 vì thế bắt đầu từ 01/01/2018, không phải 01/07/2016.
+  - Ngoại lệ chưa mô hình hóa: NQ 144/2016 Điều 1 khoản 4 – từ 01/07/2016 đã áp dụng các quy
+    định có lợi cho người phạm tội (khoản 3 Điều 7 BLHS 2015).
+  - **Hệ quả cho Phần 2**: BLHS bắt đầu có hiệu lực ở dạng đã sửa theo Luật 12/2017. Các Điều
+    bị Luật 12/2017 sửa chưa bao giờ được áp dụng ở dạng nguyên bản 2015 → khi ghép, phiên bản
+    gốc của chúng có khoảng hiệu lực rỗng; phiên bản 12/2017 bắt đầu từ 01/01/2018.
+
+### Bổ sung tay (`config/bo_sung_tay.json`)
+
+Nguyên tắc: không sửa `data/raw`; chữ bổ sung **không chép vào config** mà code đọc thẳng từ file
+bằng chứng `data/bo_sung_tay/luatvietnam_BLHS_D251_D252_D278.txt` (người dùng chép từ
+luatvietnam.vn ngày 17/11/2026, đã bỏ 2 dòng quảng cáo). Mỗi Điểm chèn vào có trường
+`nguon_bo_sung`; Điều có trường `bo_sung_tay`. Build báo lỗi nếu vbpl đã có Điểm đó, nếu các
+Điểm vbpl có sẵn khác bằng chứng, hoặc nếu sau bổ sung vẫn còn thiếu.
+
+Đối chiếu trước khi nhận nguồn:
+- Mọi đơn vị (tên, Khoản, Điểm) vbpl có của Điều 251 (40), 252 (48), 278 (27) trùng từng chữ với
+  luatvietnam; khác duy nhất "phá hủy" (vbpl) / "phá huỷ" (luatvietnam) ở Điều 278 – giữ vbpl.
+- Bản luatvietnam là **bản gốc 2015**, không phải bản sửa theo Luật 12/2017 (khoản 68, 69, 90
+  của Luật 12/2017 sửa đúng 3 Điều này): bản 12/2017 viết "Heroine, Cocaine, … hoặc XLR-11",
+  "từ 10 năm đến 15 năm", Điều 278 có 5 khoản; luatvietnam viết như vbpl gốc.
+
+Phát hiện cho Phần 2 (chưa xử lý): văn bản 12/2017 trên vbpl có lỗi chữ "Quà/Quá thuốc phiện",
+"1)" thay cho "l)" (khoản 2 Điều 252), và khoản 4 Điều 252 (bản sửa) không có điểm e.
 
 ## 8. Việc còn lại
 
 | Việc | Trạng thái |
 | --- | --- |
 | Raw | Xong |
-| Clean – phần 1: cắt chunk 4 bộ luật gốc | **Xong** (mục 7b); còn bổ sung tay 3 chỗ mất Điểm |
+| Clean – phần 1: cắt chunk 4 bộ luật gốc | **Xong** (mục 7b), không còn cảnh báo mở |
 | Clean – phần 2: ghép sửa đổi (gồm bãi bỏ Chương) | Đã thiết kế, cần viết code |
 | Clean – phần 3: hướng dẫn + liên kết 2 chiều | Đã thiết kế, cần viết code |
 | Clean – phần 4: kiểm tra với 2 văn bản hợp nhất | Đã thiết kế |

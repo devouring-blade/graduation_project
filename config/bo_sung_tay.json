@@ -1,0 +1,40 @@
+{
+  "_ghi_chu": "Bổ sung tay cho lỗi của nguồn vbpl. KHÔNG sửa data/raw. Nội dung lấy thẳng từ file bằng chứng trong data/bo_sung_tay/ (code đọc file đó, không chép chữ vào đây). Mỗi mục phải có nguồn.",
+
+  "bo_sung_diem": [
+    {
+      "id": "BLHS-D251-K3-abc",
+      "so_hieu": "100/2015/QH13",
+      "dieu": "251",
+      "khoan": 3,
+      "diem": ["a", "b", "c"],
+      "lay_tu": "data/bo_sung_tay/luatvietnam_BLHS_D251_D252_D278.txt",
+      "nguon": "luatvietnam.vn, người dùng chép tay ngày 17/11/2026",
+      "doi_chieu": "Mọi đơn vị vbpl có của Điều 251 (40 đơn vị) trùng từng chữ với nguồn này; nguồn khác Luật 12/2017 khoản 68 (vd. không có 'XLR-11') nên là bản gốc 2015."
+    },
+    {
+      "id": "BLHS-D252-K3-abc",
+      "so_hieu": "100/2015/QH13",
+      "dieu": "252",
+      "khoan": 3,
+      "diem": ["a", "b", "c"],
+      "lay_tu": "data/bo_sung_tay/luatvietnam_BLHS_D251_D252_D278.txt",
+      "nguon": "luatvietnam.vn, người dùng chép tay ngày 17/11/2026",
+      "doi_chieu": "Mọi đơn vị vbpl có của Điều 252 (48 đơn vị) trùng từng chữ với nguồn này; khoản 3 ghi 'từ 10 đến 15 năm' như vbpl, khác Luật 12/2017 khoản 69 ('từ 10 năm đến 15 năm') nên là bản gốc 2015."
+    }
+  ],
+
+  "xac_nhan_khong_loi": [
+    {
+      "id": "BLHS-D278-K2-khong-co-diem-dd",
+      "so_hieu": "100/2015/QH13",
+      "dieu": "278",
+      "loai": "thieu_diem",
+      "khoan": 2,
+      "ket_luan": "Bản gốc 2015 khoản 2 Điều 278 không có điểm đ (đi thẳng từ d sang e). Không phải lỗi vbpl.",
+      "lay_tu": "data/bo_sung_tay/luatvietnam_BLHS_D251_D252_D278.txt",
+      "nguon": "luatvietnam.vn, người dùng chép tay ngày 17/11/2026",
+      "doi_chieu": "Hai nguồn độc lập (vbpl, luatvietnam) giống nhau; 27 đơn vị trùng từng chữ, chỉ khác cách bỏ dấu 'phá hủy'/'phá huỷ' – giữ chữ vbpl."
+    }
+  ]
+}

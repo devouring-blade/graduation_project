@@ -1,5 +1,5 @@
 {
-  "_ghi_chu": "Thông tin 4 bộ luật gốc mà code không tự đọc được từ HTML. ngay_hieu_luc là ngày áp dụng THỰC TẾ; nếu để null thì lấy ngày ghi trong văn bản. Mục can_kiem_tra=true: cần tra lại trên vbpl.vn trước khi chốt.",
+  "_ghi_chu": "Thông tin 4 bộ luật gốc mà code không tự đọc được từ HTML. ngay_hieu_luc là ngày áp dụng THỰC TẾ; nếu để null thì lấy ngày ghi trong văn bản. can_kiem_tra=true: chưa có nguồn xác minh.",
   "91/2015/QH13": {
     "ten": "Bộ luật Dân sự",
     "ten_ngan": "BLDS",
@@ -33,8 +33,20 @@
     "linh_vuc": "hinh_su",
     "co_quan": "Quốc hội",
     "ngay_hieu_luc": "2018-01-01",
-    "can_cu_hieu_luc": "Nghị quyết 144/2016/QH13 lùi hiệu lực; Nghị quyết 41/2017/QH14 ấn định hiệu lực từ 01/01/2018",
-    "can_kiem_tra": true
+    "can_cu_hieu_luc": "NQ 144/2016/QH13 Điều 1 khoản 2 (lùi hiệu lực); NQ 41/2017/QH14 Điều 1 khoản 1 (hiệu lực từ 01/01/2018)",
+    "can_kiem_tra": false,
+    "nguon_hieu_luc": {
+      "van_ban": [
+        "Nghị quyết 144/2016/QH13 (data/bo_sung_tay/144_2016_QH13.doc)",
+        "Nghị quyết 41/2017/QH14 (data/bo_sung_tay/41_2017_QH14.doc)"
+      ],
+      "trich": [
+        "NQ 144/2016/QH13 Điều 1 khoản 2: \"Lùi hiệu lực thi hành của Bộ luật Hình sự số 100/2015/QH13, Bộ luật tố tụng hình sự số 101/2015/QH13; ... từ ngày 1 tháng 7 năm 2016 đến ngày Luật sửa đổi, bổ sung một số điều của Bộ luật hình sự số 100/2015/QH13 có hiệu lực thi hành, trừ quy định tại điểm a và điểm b khoản 4 Điều này.\"",
+        "NQ 41/2017/QH14 Điều 1 khoản 1: \"Kể từ ngày 01 tháng 01 năm 2018, các bộ luật, luật sau đây có hiệu lực thi hành: a) Bộ luật Hình sự số 100/2015/QH13 đã được sửa đổi, bổ sung một số điều theo Luật số 12/2017/QH14 ...; b) Bộ luật Tố tụng hình sự số 101/2015/QH13; ...\""
+      ],
+      "nguoi_cung_cap": "người dùng, tải từ luatvietnam.vn ngày 17/11/2026",
+      "ngoai_le": "NQ 144/2016/QH13 Điều 1 khoản 4: từ 01/07/2016 đã áp dụng các quy định có lợi cho người phạm tội (khoản 3 Điều 7 BLHS 2015) – chưa mô hình hóa trong corpus."
+    }
   },
   "101/2015/QH13": {
     "ten": "Bộ luật Tố tụng hình sự",
@@ -45,7 +57,19 @@
     "linh_vuc": "hinh_su",
     "co_quan": "Quốc hội",
     "ngay_hieu_luc": "2018-01-01",
-    "can_cu_hieu_luc": "Nghị quyết 144/2016/QH13 lùi hiệu lực; Nghị quyết 41/2017/QH14 ấn định hiệu lực từ 01/01/2018",
-    "can_kiem_tra": true
+    "can_cu_hieu_luc": "NQ 144/2016/QH13 Điều 1 khoản 2 (lùi hiệu lực); NQ 41/2017/QH14 Điều 1 khoản 1 (hiệu lực từ 01/01/2018)",
+    "can_kiem_tra": false,
+    "nguon_hieu_luc": {
+      "van_ban": [
+        "Nghị quyết 144/2016/QH13 (data/bo_sung_tay/144_2016_QH13.doc)",
+        "Nghị quyết 41/2017/QH14 (data/bo_sung_tay/41_2017_QH14.doc)"
+      ],
+      "trich": [
+        "NQ 144/2016/QH13 Điều 1 khoản 2: \"Lùi hiệu lực thi hành của Bộ luật Hình sự số 100/2015/QH13, Bộ luật tố tụng hình sự số 101/2015/QH13; ... từ ngày 1 tháng 7 năm 2016 đến ngày Luật sửa đổi, bổ sung một số điều của Bộ luật hình sự số 100/2015/QH13 có hiệu lực thi hành, trừ quy định tại điểm a và điểm b khoản 4 Điều này.\"",
+        "NQ 41/2017/QH14 Điều 1 khoản 1: \"Kể từ ngày 01 tháng 01 năm 2018, các bộ luật, luật sau đây có hiệu lực thi hành: a) Bộ luật Hình sự số 100/2015/QH13 đã được sửa đổi, bổ sung một số điều theo Luật số 12/2017/QH14 ...; b) Bộ luật Tố tụng hình sự số 101/2015/QH13; ...\""
+      ],
+      "nguoi_cung_cap": "người dùng, tải từ luatvietnam.vn ngày 17/11/2026",
+      "ngoai_le": "NQ 144/2016/QH13 Điều 1 khoản 4: từ 01/07/2016 đã áp dụng các quy định có lợi cho người phạm tội (khoản 3 Điều 7 BLHS 2015) – chưa mô hình hóa trong corpus."
+    }
   }
 }

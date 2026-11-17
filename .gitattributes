@@ -1,2 +1,3 @@
 # Giữ nguyên từng byte của dữ liệu raw (mã băm trong manifest.jsonl phải khớp)
 data/raw/** -text
+data/bo_sung_tay/** -text
