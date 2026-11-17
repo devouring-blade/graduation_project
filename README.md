@@ -5,41 +5,49 @@ Hình sự (100/2015/QH13), Tố tụng hình sự (101/2015/QH13) – cùng vă
 
 Giả thiết: văn bản trong `data/raw/` đã được kiểm tra thủ công và đúng; code chỉ đọc và xử lý.
 
-- `data/raw/` – 56 văn bản HTML, chia 5 nhóm; xem `data/raw/README.md`. Các chỗ đã sửa tay
-  so với bản tải về ghi ở `data/raw/SUA_TAY.jsonl`.
-- `data/processed/` – kết quả xử lý (sinh ra bằng code, không đưa vào git).
-- `config/van_ban_goc.json` – thông tin 4 bộ luật code không tự đọc được (ngày hiệu lực thực tế).
-- `src/clean/`:
-  - `html_text.py` – HTML → danh sách dòng chữ
-  - `cau_truc.py` – dòng → cây Phần/Chương/Mục/Điều/Khoản/Điểm
-  - `chunking.py` – cắt chunk theo cấu trúc
-  - `build_goc.py` – Phần 1: dựng corpus 4 bộ luật gốc
-  - `vi_tri.py`, `doc_lenh.py` – Phần 2: đọc câu lệnh sửa đổi
-  - `ap_lenh.py` – Phần 2: áp lệnh, dựng phiên bản theo thời gian (cả bộ luật gốc và văn bản hướng dẫn)
-  - `build_huong_dan.py` – Phần 3: tách Điều văn bản hướng dẫn
-  - `lien_ket.py` – Phần 3: liên kết 2 chiều hướng dẫn ↔ Điều luật, xuất 2 kho chunk riêng
-- `BAO_CAO_DU_LIEU.md` – báo cáo thu thập và thiết kế.
-
 ## Chạy
 
 ```
-venv\Scripts\python.exe src\clean\build_goc.py
-venv\Scripts\python.exe src\clean\build_huong_dan.py
-venv\Scripts\python.exe src\clean\doc_lenh.py
-venv\Scripts\python.exe src\clean\ap_lenh.py
-venv\Scripts\python.exe src\clean\lien_ket.py
+venv\Scripts\python.exe src\chay.py
 ```
+
+Xoá `data/processed/` rồi chạy một mạch 5 bước (khoảng 10 giây); bước nào lỗi thì dừng.
+
+| Bước | File | Việc |
+| --- | --- | --- |
+| 1 | `src/clean/build_goc.py` | Tách 4 bộ luật gốc thành Điều/Khoản/Điểm |
+| 2 | `src/clean/build_huong_dan.py` | Tách các văn bản hướng dẫn |
+| 3 | `src/clean/doc_lenh.py` (+ `vi_tri.py`) | Đọc câu lệnh trong văn bản sửa đổi |
+| 4 | `src/clean/ap_lenh.py` (+ `chunking.py`) | Áp sửa đổi, dựng phiên bản theo thời gian, cắt chunk |
+| 5 | `src/clean/lien_ket.py` | Liên kết hướng dẫn ↔ Điều luật, xuất kết quả |
+
+Dùng chung: `html_text.py` (HTML → dòng chữ), `cau_truc.py` (dòng → cây Điều/Khoản/Điểm).
+
+## Kết quả (`data/processed/`)
+
+| File | Nội dung | Dùng để |
+| --- | --- | --- |
+| `corpus_luat.jsonl` | Chunk Điều luật, có `valid_from`/`valid_to` | **Tìm kiếm** |
+| `corpus_huong_dan.jsonl` | Chunk văn bản hướng dẫn | Tìm phụ; chunk trúng → kéo Điều luật cha qua `huong_dan_cho` |
+| `huong_dan_toan_van.jsonl` | Toàn văn từng văn bản hướng dẫn theo phiên bản | Đưa cho agent khi đã có Điều luật: lấy `so_hieu` trong `huong_dan_boi`, chọn bản có hiệu lực tại ngày cần hỏi |
+| `van_ban.jsonl` | Thông tin mọi văn bản (tên, loại, ngày hiệu lực…) | Hiển thị, trích dẫn |
+| `thong_ke.json` | Số liệu tổng hợp | |
+
+`trung_gian/` chứa dữ liệu giữa các bước (cây Điều, câu lệnh sửa đổi, phiên bản Điều, nhật ký áp lệnh).
+
+Chunk theo cấu trúc: Điều ngắn (≤ 400 từ) = 1 chunk; Điều dài → mỗi Khoản (kèm tên Điều, câu dẫn
+Điều); Khoản dài → mỗi Điểm (kèm tên Điều, câu dẫn Điều, câu dẫn Khoản).
+
+## Cấu hình và đầu vào
+
+- `config/van_ban_goc.json` – thông tin 4 bộ luật code không tự đọc được (tên, ngày hiệu lực thực tế, số Điều).
+- `config/van_ban_huong_dan.json` – ngày hiệu lực văn bản hướng dẫn không ghi trong văn bản (có nguồn).
+- `data/raw/manifest.jsonl` – danh mục văn bản đầu vào; `data/raw/SUA_TAY.jsonl` – các chỗ đã sửa tay trong raw.
 
 ## Trạng thái
 
-- Phần 1: 2.142 Điều, 3.170 chunk.
-- Phần 2: 447 thao tác sửa đổi đã áp; 3 thao tác ở BLTTHS (Điều 333, 454, 496) chưa áp vì mốc
-  chèn xuất hiện nhiều lần.
-- Phần 3: 31/32 văn bản hướng dẫn đã vào corpus (854 chunk, 537 có liên kết tới Điều luật);
-  02/2020/NQ-HĐTP chưa đưa vào (file thực chất là Thông tư 02/2020/TT-TANDTC, không hướng dẫn 4 bộ luật).
-- Kết quả cuối (data/processed/):
-  - `corpus_luat.jsonl` – 3.445 chunk Điều luật, có phiên bản theo thời gian. Chỉ kho này dùng để tìm kiếm.
-  - `corpus_huong_dan.jsonl` – 854 chunk hướng dẫn; tra theo mã qua trường `huong_dan_boi` của chunk luật.
-  - Chunk theo cấu trúc: Điều ngắn = 1 chunk; Điều dài -> mỗi Khoản (kèm tên Điều, câu dẫn Điều);
-    Khoản dài -> mỗi Điểm (kèm tên Điều, câu dẫn Điều, câu dẫn Khoản).
-- Embedding, truy xuất, benchmark: chưa làm.
+- 3.445 chunk luật, 854 chunk hướng dẫn (537 có liên kết tới Điều luật), toàn văn 31 văn bản hướng dẫn.
+- 464 thao tác sửa đổi đã áp. Chưa áp 4: BLTTHS Điều 333, 454, 496 (mốc chèn xuất hiện nhiều lần);
+  NQ 03/2024 Điều 3 khoản 3 (không có cụm cần thay).
+- `02/2020/NQ-HĐTP` chưa đưa vào: file thực chất là Thông tư 02/2020/TT-TANDTC, không hướng dẫn 4 bộ luật.
+- Chưa làm: liên kết gợi ý (bằng embedding) cho chunk hướng dẫn chưa có liên kết; embedding; truy xuất; benchmark.
