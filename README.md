@@ -17,7 +17,7 @@ Giả thiết: văn bản trong `data/raw/` đã được kiểm tra thủ công
   - `vi_tri.py`, `doc_lenh.py` – Phần 2: đọc câu lệnh sửa đổi
   - `ap_lenh.py` – Phần 2: áp lệnh, dựng phiên bản theo thời gian (cả bộ luật gốc và văn bản hướng dẫn)
   - `build_huong_dan.py` – Phần 3: tách Điều văn bản hướng dẫn
-  - `lien_ket.py` – Phần 3: liên kết 2 chiều hướng dẫn ↔ Điều luật, xuất `corpus.jsonl`
+  - `lien_ket.py` – Phần 3: liên kết 2 chiều hướng dẫn ↔ Điều luật, xuất 2 kho chunk riêng
 - `BAO_CAO_DU_LIEU.md` – báo cáo thu thập và thiết kế.
 
 ## Chạy
@@ -37,5 +37,9 @@ venv\Scripts\python.exe src\clean\lien_ket.py
   chèn xuất hiện nhiều lần.
 - Phần 3: 31/32 văn bản hướng dẫn đã vào corpus (854 chunk, 532 có liên kết tới Điều luật);
   02/2020/NQ-HĐTP chưa đưa vào (file thực chất là Thông tư 02/2020/TT-TANDTC, không hướng dẫn 4 bộ luật).
-- Kết quả cuối: `data/processed/corpus.jsonl` (4.299 chunk có phiên bản theo thời gian).
+- Kết quả cuối (data/processed/):
+  - `corpus_luat.jsonl` – 3.445 chunk Điều luật, có phiên bản theo thời gian. Chỉ kho này dùng để tìm kiếm.
+  - `corpus_huong_dan.jsonl` – 854 chunk hướng dẫn; tra theo mã qua trường `huong_dan_boi` của chunk luật.
+  - Chunk theo cấu trúc: Điều ngắn = 1 chunk; Điều dài -> mỗi Khoản (kèm tên Điều, câu dẫn Điều);
+    Khoản dài -> mỗi Điểm (kèm tên Điều, câu dẫn Điều, câu dẫn Khoản).
 - Embedding, truy xuất, benchmark: chưa làm.

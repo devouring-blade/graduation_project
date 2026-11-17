@@ -14,7 +14,8 @@ Chunk bộ luật gốc: huong_dan_boi = [{chunk_id, phien_ban_id, trang_thai}] 
     gắn vào chunk của đúng Điều (và đúng Khoản nếu nêu), khi hai khoảng hiệu lực giao nhau.
 Dẫn chiếu tới bộ luật năm khác (vd. "Bộ luật Dân sự năm 2005") bị bỏ qua.
 
-Đầu ra: data/processed/corpus.jsonl (toàn bộ chunk có liên kết), thong_ke_lien_ket.json
+Đầu ra: data/processed/corpus_luat.jsonl (chunk Điều luật – dùng để tìm kiếm),
+        corpus_huong_dan.jsonl (chunk hướng dẫn – chỉ tra theo mã), thong_ke_lien_ket.json
 """
 from __future__ import annotations
 
@@ -160,9 +161,14 @@ def main() -> int:
                                                "trang_thai": "viet_cho_ban_cu" if c["valid_from"] > h["valid_from"] else "khop"})
     tk["chunk_goc_duoc_huong_dan"] = sum(bool(c.get("huong_dan_boi")) for c in chunks if c["nhom"] == "goc")
 
-    with (OUT / "corpus.jsonl").open("w", encoding="utf-8", newline="\n") as f:
-        for c in chunks:
-            f.write(json.dumps(c, ensure_ascii=False) + "\n")
+    # Hai kho riêng: chỉ chunk Điều luật được đưa vào tìm kiếm; chunk hướng dẫn chỉ tra theo mã
+    # khi một Điều luật trỏ tới (huong_dan_boi).
+    for name, nhom in (("corpus_luat.jsonl", "goc"), ("corpus_huong_dan.jsonl", "huong_dan")):
+        with (OUT / name).open("w", encoding="utf-8", newline="\n") as f:
+            for c in chunks:
+                if c["nhom"] == nhom:
+                    f.write(json.dumps(c, ensure_ascii=False) + "\n")
+    (OUT / "corpus.jsonl").unlink(missing_ok=True)
     (OUT / "thong_ke_lien_ket.json").write_text(json.dumps({"thong_ke": tk, "dan_chieu_khong_co_dieu": bo_qua},
                                                          ensure_ascii=False, indent=2), encoding="utf-8")
     print(dict(tk))
