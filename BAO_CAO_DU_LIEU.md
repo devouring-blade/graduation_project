@@ -363,7 +363,7 @@ Code: `src/clean/` (`build_goc.py` là điểm chạy). Đầu ra trong `data/pr
 | `van_ban.jsonl` | 4 dòng – thông tin văn bản, gồm `ngay_hieu_luc` (thực tế) và `ngay_hieu_luc_ghi_trong_vb` |
 | `dieu.jsonl` | 2.142 dòng – mỗi dòng một phiên bản Điều, giữ cây `doan_dan` / `khoan[].diem[]` / `doan_sau`, vị trí Phần/Chương/Mục/Tiểu mục |
 | `chunks.jsonl` | 3.170 chunk – `text` (đem embed, có dòng đầu tên văn bản – Chương – Điều), `noi_dung` (chữ gốc), `trich_dan`, `valid_from`/`valid_to`, `huong_dan_boi`/`huong_dan_cho` (trống) |
-| `canh_bao.jsonl` | 10 cảnh báo, mỗi dòng có `trang_thai`: tu_dong_sua 5, da_bo_sung 2, xac_nhan_khong_loi 1, da_xac_minh 2; còn mở 0 |
+| `canh_bao.jsonl` | 11 cảnh báo, mỗi dòng có `trang_thai`: tu_dong_sua 6, da_bo_sung 2, xac_nhan_khong_loi 1, da_xac_minh 2; còn mở 0 |
 | `thong_ke.json` | số liệu + kết quả kiểm tra |
 
 | Bộ luật | Điều | Khoản | Điểm | Chunk (Điều / Khoản / Điểm) | Hiệu lực dùng |
@@ -418,12 +418,47 @@ luatvietnam.vn ngày 17/11/2026, đã bỏ 2 dòng quảng cáo). Mỗi Điểm 
 Phát hiện cho Phần 2 (chưa xử lý): văn bản 12/2017 trên vbpl có lỗi chữ "Quà/Quá thuốc phiện",
 "1)" thay cho "l)" (khoản 2 Điều 252), và khoản 4 Điều 252 (bản sửa) không có điểm e.
 
+### Kiểm tra dẫn chiếu chéo (`src/clean/kiem_tra_dan_chieu.py`)
+
+Mục đích: bắt lỗi mà kiểm tra thứ tự không bắt được – vbpl mất **Khoản/Điểm cuối** của một Điều
+(thứ tự vẫn liền). Script dò mọi câu luật tự nhắc tới chính nó ("điểm d khoản 2 Điều 175 của Bộ
+luật này", "khoản 3 Điều này", "các điểm từ điểm a đến điểm n khoản này", "khoản 1 các điều 134,
+135…") và kiểm Điều/Khoản/Điểm được nhắc có tồn tại. Không sửa dữ liệu; ghi
+`data/processed/dan_chieu.jsonl`.
+
+Kết quả (sau build `goc-1.2`):
+
+| Loại | Khớp | Không khớp |
+| --- | --- | --- |
+| Nội bộ chắc chắn ("Điều này", "khoản này", "của Bộ luật này") | 1.975 | 1 |
+| Trần (không ghi văn bản) | 276 | 1 |
+| Sang văn bản khác (bỏ qua) | 22 | – |
+
+Độ phủ của bộ dò: trong 1.493 lần xuất hiện "Điều này" / "khoản này" / "của Bộ luật này", mọi lần
+gắn với Điều/Khoản/Điểm cụ thể đều được dò; phần còn lại là câu chung ("theo quy định của Bộ luật
+này") hoặc dẫn tới Chương.
+
+Hai chỗ không khớp:
+1. **BLTTDS Điều 27 khoản 8** dẫn "điểm e khoản 2 Điều 470 của Bộ luật này"; dữ liệu vbpl khoản 2
+   Điều 470 chỉ có điểm a–đ. **Chưa kết luận** – cần đối chiếu bản chính thức (đang chờ).
+2. BLTTDS Điều 517 khoản 2 "điểm h khoản 1 Điều 192": theo câu chữ ("Bộ luật tố tụng dân sự số
+   24/2004/QH11 … hết hiệu lực…, trừ các quy định tại Điều 159 và điểm h khoản 1 Điều 192 tiếp tục
+   có hiệu lực") đây là quy định của **BLTTDS 2004**, không phải của bộ luật này → không phải lỗi dữ liệu.
+
+Lỗi bộ tách cấu trúc phát hiện nhờ bước này, đã sửa (`goc-1.2`):
+- Dòng gạch "_____" trước phần ký bị tính vào nội dung Điều 517 BLTTDS và Điều 510 BLTTHS.
+- BLTTHS Điều 510: câu "Bộ luật này đã được Quốc hội … thông qua …" nằm chung một `<p>` với nội
+  dung Điều (lỗi nguồn) → tách ra phần cuối văn bản (`cuoi_van_ban_chung_dong`, tự động sửa).
+
+Giới hạn: kiểm tra này chỉ bắt chỗ mất được câu khác nhắc tới; không thay được việc so toàn văn
+với bản chính thức.
+
 ## 8. Việc còn lại
 
 | Việc | Trạng thái |
 | --- | --- |
 | Raw | Xong |
-| Clean – phần 1: cắt chunk 4 bộ luật gốc | **Xong** (mục 7b), không còn cảnh báo mở |
+| Clean – phần 1: cắt chunk 4 bộ luật gốc | **Xong** (mục 7b); chờ đối chiếu BLTTDS Điều 27 k8 / Điều 470 k2 |
 | Clean – phần 2: ghép sửa đổi (gồm bãi bỏ Chương) | Đã thiết kế, cần viết code |
 | Clean – phần 3: hướng dẫn + liên kết 2 chiều | Đã thiết kế, cần viết code |
 | Clean – phần 4: kiểm tra với 2 văn bản hợp nhất | Đã thiết kế |

@@ -13,6 +13,7 @@ Hình sự (100/2015/QH13), Tố tụng hình sự (101/2015/QH13) – cùng vă
   - `chunking.py` – cắt chunk theo cấu trúc
   - `bo_sung.py` – áp bổ sung tay (`config/bo_sung_tay.json`) cho lỗi nguồn vbpl
   - `build_goc.py` – Phần 1: dựng corpus 4 bộ luật gốc
+  - `kiem_tra_dan_chieu.py` – kiểm dẫn chiếu chéo (chạy sau build, không sửa dữ liệu)
 - `BAO_CAO_DU_LIEU.md` – báo cáo đầy đủ: thu thập, thiết kế, kết quả, việc còn lại.
 
 ## Chạy

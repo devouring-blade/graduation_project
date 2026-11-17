@@ -32,9 +32,13 @@ RE_TIEU_MUC = re.compile(r"^(Tiểu\s+mục\s+\d+)\s*[.:]?\s*(.*)$", re.I)     #
 RE_KHOAN = re.compile(r"^(\d+)\.(?!\d)\s*(.*)$")   # tránh "1.000.000 đồng"
 RE_KHOAN_THIEU_CHAM = re.compile(r"^(\d+)\s+(?=[A-ZĐÀ-Ỹ])(.*)$")   # "1 Trường hợp..." (lỗi nguồn)
 RE_DIEM = re.compile(r"^([a-zđ])\)\s*(.*)$")
+_THONG_QUA = r"(?:Bộ luật|Luật|Nghị quyết|Nghị định|Thông tư liên tịch|Thông tư) này (?:đã )?được [^.]*thông qua"
 RE_CUOI = re.compile(
-    r"^((Bộ luật|Luật|Nghị quyết|Nghị định|Thông tư liên tịch|Thông tư) này (đã )?được .*thông qua"
-    r"|CHỦ TỊCH|TM\.|KT\.|Nơi nhận)", re.I)
+    rf"^({_THONG_QUA}|CHỦ TỊCH|TM\.|KT\.|Nơi nhận)"
+    r"|^[_\-–—*=.\s]{5,}$",            # dòng gạch ngăn cách trước phần ký
+    re.I)
+# Câu "… này đã được … thông qua" nằm chung dòng với khoản cuối (vd. BLTTHS Điều 510)
+RE_CUOI_GIUA = re.compile(rf"(?<=[.;])\s+(?={_THONG_QUA})")
 # Chỗ hai Điểm dính trên cùng một dòng: "...; d) Lợi dụng..."
 RE_DIEM_DINH = re.compile(r"(?<=[;.:])\s+([a-zđ])\)\s+")
 
@@ -178,6 +182,13 @@ def parse_van_ban(lines: list[Line]) -> dict:
         if cur is not None and RE_CUOI.match(t):
             ended = True
             cuoi.append(t)
+            continue
+        if cur is not None and (mg := RE_CUOI_GIUA.search(t)):
+            cur[1].append(t[:mg.start()].rstrip())
+            cuoi.append(t[mg.end():])
+            canh_bao.append({"loai": "cuoi_van_ban_chung_dong", "dieu": f"Điều {cur[0]['so_dieu']}",
+                             "chi_tiet": "câu thông qua nằm chung dòng với nội dung, đã tách ra"})
+            ended = True
             continue
 
         # Dòng tên của heading vừa gặp (tên dài có thể chiếm nhiều dòng)

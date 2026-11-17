@@ -27,9 +27,9 @@ from cau_truc import parse_van_ban, render_dieu_body  # noqa: E402
 from chunking import NGUONG_DIEU, NGUONG_KHOAN, chunk_dieu, sha  # noqa: E402
 from html_text import read_lines  # noqa: E402
 
-CODE_VERSION = "goc-1.1"
+CODE_VERSION = "goc-1.2"
 # Cảnh báo mà code đã tự sửa chắc chắn (không cần người duyệt)
-TU_DONG_SUA = {"diem_dinh_dong", "khoan_thieu_dau_cham"}
+TU_DONG_SUA = {"diem_dinh_dong", "khoan_thieu_dau_cham", "cuoi_van_ban_chung_dong"}
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
 OUT = DATA / "processed"
