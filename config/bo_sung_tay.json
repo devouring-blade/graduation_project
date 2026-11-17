@@ -1,29 +1,6 @@
 {
-  "_ghi_chu": "Bổ sung tay cho lỗi của nguồn vbpl. KHÔNG sửa data/raw. Nội dung lấy thẳng từ file bằng chứng trong data/bo_sung_tay/ (code đọc file đó, không chép chữ vào đây). Mỗi mục phải có nguồn.",
-
-  "bo_sung_diem": [
-    {
-      "id": "BLHS-D251-K3-abc",
-      "so_hieu": "100/2015/QH13",
-      "dieu": "251",
-      "khoan": 3,
-      "diem": ["a", "b", "c"],
-      "lay_tu": "data/bo_sung_tay/luatvietnam_BLHS_D251_D252_D278.txt",
-      "nguon": "luatvietnam.vn, người dùng chép tay ngày 17/11/2026",
-      "doi_chieu": "Mọi đơn vị vbpl có của Điều 251 (40 đơn vị) trùng từng chữ với nguồn này; nguồn khác Luật 12/2017 khoản 68 (vd. không có 'XLR-11') nên là bản gốc 2015."
-    },
-    {
-      "id": "BLHS-D252-K3-abc",
-      "so_hieu": "100/2015/QH13",
-      "dieu": "252",
-      "khoan": 3,
-      "diem": ["a", "b", "c"],
-      "lay_tu": "data/bo_sung_tay/luatvietnam_BLHS_D251_D252_D278.txt",
-      "nguon": "luatvietnam.vn, người dùng chép tay ngày 17/11/2026",
-      "doi_chieu": "Mọi đơn vị vbpl có của Điều 252 (48 đơn vị) trùng từng chữ với nguồn này; khoản 3 ghi 'từ 10 đến 15 năm' như vbpl, khác Luật 12/2017 khoản 69 ('từ 10 năm đến 15 năm') nên là bản gốc 2015."
-    }
-  ],
-
+  "_ghi_chu": "Bổ sung tay cho lỗi nguồn. Từ 17/11/2026 các lỗi đã được sửa thẳng vào data/raw (nhật ký: data/raw/SUA_TAY.jsonl); file này chỉ còn các xác nhận và giải thích.",
+  "bo_sung_diem": [],
   "xac_nhan_khong_loi": [
     {
       "id": "BLHS-D278-K2-khong-co-diem-dd",
@@ -37,7 +14,6 @@
       "doi_chieu": "Hai nguồn độc lập (vbpl, luatvietnam) giống nhau; 27 đơn vị trùng từng chữ, chỉ khác cách bỏ dấu 'phá hủy'/'phá huỷ' – giữ chữ vbpl."
     }
   ],
-
   "dan_chieu_da_giai_thich": [
     {
       "so_hieu": "92/2015/QH13",
@@ -46,17 +22,5 @@
       "ket_luan": "Dẫn chiếu sang BLTTDS 24/2004/QH11, không phải bộ luật này. Câu chữ: 'Bộ luật tố tụng dân sự số 24/2004/QH11 … hết hiệu lực…, trừ các quy định tại Điều 159 và điểm h khoản 1 Điều 192 tiếp tục có hiệu lực thi hành đến hết ngày 31 tháng 12 năm 2016.'"
     }
   ],
-
-  "sua_noi_dung": [
-    {
-      "id": "BLTTDS-D27-K8-diem-dd",
-      "so_hieu": "92/2015/QH13",
-      "dieu": "27",
-      "khoan": 8,
-      "chi_duoc_khac": {"cu": "điểm e khoản 2 Điều 470", "moi": "điểm đ khoản 2 Điều 470"},
-      "lay_tu": "data/bo_sung_tay/luatvietnam_BLTTDS_D27_D470.txt",
-      "nguon": "luatvietnam.vn, người dùng chép tay ngày 17/11/2026",
-      "doi_chieu": "HAI NGUỒN MÂU THUẪN 1 ký tự: vbpl 'điểm e', luatvietnam 'điểm đ'. Theo luatvietnam vì người dùng chọn làm nguồn nội dung thật; bản này khớp với khoản 2 Điều 470 (cả hai nguồn chỉ có điểm a–đ, nội dung điểm đ đúng việc khoản 8 Điều 27 nói tới). Các đơn vị khác của Điều 27 (21) và Điều 470 (14) trùng từng chữ. Không văn bản sửa đổi nào trong kho chạm Điều 27/470 BLTTDS. Chưa đối chiếu Công báo."
-    }
-  ]
+  "sua_noi_dung": []
 }
