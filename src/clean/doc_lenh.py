@@ -214,13 +214,7 @@ def _is_cmd(t: str) -> bool:
 
 
 def doc_van_ban(path: Path, so_hieu: str, cfg: dict, nhom: str = "sua_doi") -> tuple[list[dict], dict]:
-    lines = []
-    for ln in read_lines(path):
-        # Lỗi nguồn: hai câu lệnh dính một dòng ("…Điều 275. 69. Bỏ cụm từ …") -> tách
-        if _is_cmd(ln.text):
-            lines += re.split(r"(?<=[.;])\s+(?=\d+[a-zđ]?\.\s*(?:Sửa đổi|Bổ sung|Bãi bỏ|Thay thế|Thay|Bỏ)\s)", ln.text)
-        else:
-            lines.append(ln.text)
+    lines = [ln.text for ln in read_lines(path)]
     n = len(lines)
     in_quote = [False] * n
     content_of: dict[int, list[str]] = {}

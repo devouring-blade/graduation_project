@@ -1,20 +1,15 @@
 """Tách một văn bản (danh sách dòng) thành cây Phần / Chương / Mục / Điều / Khoản / Điểm.
 
-Không dựa vào class prov-*; tách theo chữ (BAO_CAO_DU_LIEU.md mục 7).
+Giả thiết: văn bản đầu vào đã đúng (đã kiểm tra thủ công). Tách theo chữ, không dựa vào class prov-*.
 
-Kết quả của parse_van_ban():
-    {
-      "dau_van_ban": [...],        # các dòng trước Điều 1 (quốc hiệu, tên, căn cứ)
-      "cuoi_van_ban": [...],       # các dòng sau Điều cuối (thông qua, chữ ký)
-      "dieu": [ {so_dieu, thu_tu, tieu_de, vi_tri, doan_dan, diem, khoan}, ... ],
-      "canh_bao": [ {loai, dieu, chi_tiet}, ... ]
-    }
-
+parse_van_ban() trả về:
+    {"dau_van_ban": [...], "cuoi_van_ban": [...],
+     "dieu": [{so_dieu, thu_tu, tieu_de, vi_tri, doan_dan, diem, khoan}, ...]}
 Một Điều:
-    doan_dan : chữ nằm trước Khoản 1 (hoặc toàn bộ nội dung nếu Điều không chia Khoản)
-    diem     : các Điểm nằm thẳng dưới Điều (Điều không chia Khoản nhưng có a), b)...)
+    doan_dan : chữ trước Khoản đầu tiên (hoặc toàn bộ nội dung nếu Điều không chia Khoản)
+    diem     : Điểm nằm thẳng dưới Điều (Điều không chia Khoản)
     khoan    : [{so, noi_dung, diem: [{ky_hieu, noi_dung}], doan_sau}]
-               doan_sau = chữ nằm sau Điểm cuối của Khoản (ít gặp)
+               doan_sau = chữ nằm sau Điểm cuối của Khoản
 """
 from __future__ import annotations
 
@@ -29,10 +24,13 @@ RE_PHAN = re.compile(r"^(Phần\s+thứ\s+\S+)\s*[.:]?\s*(.*)$", re.I)
 RE_CHUONG = re.compile(r"^(Chương\s+[IVXLC]+)\s*[.:]?\s*(.*)$", re.I)
 RE_MUC = re.compile(r"^(Mục\s+(?:\d+|[IVXLC]+))\s*[.:]?\s*(.*)$")          # BLTTHS dùng "Mục I"
 RE_TIEU_MUC = re.compile(r"^(Tiểu\s+mục\s+\d+)\s*[.:]?\s*(.*)$", re.I)     # BLDS
-RE_KHOAN = re.compile(r"^(\d+)\.(?!\d)\s*(.*)$")   # tránh "1.000.000 đồng"
-RE_KHOAN_THIEU_CHAM = re.compile(r"^(\d+)\s+(?=[A-ZĐÀ-Ỹ])(.*)$")   # "1 Trường hợp..." (lỗi nguồn)
+RE_KHOAN = re.compile(r"^(\d+[a-zđ]?)\.(?!\d)\s*(.*)$")                   # "1." "1a."; tránh "1.000.000"
 RE_DIEM = re.compile(r"^([a-zđ])\)\s*(.*)$")
-RE_KHOAN_TD = re.compile(r"^(\d+[a-zđ]?)\.(?!\d)\s*(.*)$")              # nội dung sửa đổi: "1a. …"
+RE_CUOI = re.compile(
+    r"^((?:Bộ luật|Luật|Nghị quyết|Nghị định|Thông tư liên tịch|Thông tư) này (?:đã )?được [^.]*thông qua"
+    r"|CHỦ TỊCH|TM\.|KT\.|Nơi nhận)"
+    r"|^[_\-–—*=.\s]{5,}$",            # dòng gạch ngăn cách trước phần ký
+    re.I)
 
 
 def khoa_khoan(so) -> tuple:
@@ -41,24 +39,11 @@ def khoa_khoan(so) -> tuple:
     num = int(re.match(r"\d+", s).group())
     suf = s[len(str(num)):]
     return (num, DIEM_ORDER.index(suf) + 1 if suf else 0)
-_THONG_QUA = r"(?:Bộ luật|Luật|Nghị quyết|Nghị định|Thông tư liên tịch|Thông tư) này (?:đã )?được [^.]*thông qua"
-RE_CUOI = re.compile(
-    rf"^({_THONG_QUA}|CHỦ TỊCH|TM\.|KT\.|Nơi nhận)"
-    r"|^[_\-–—*=.\s]{5,}$",            # dòng gạch ngăn cách trước phần ký
-    re.I)
-# Câu "… này đã được … thông qua" nằm chung dòng với khoản cuối (vd. BLTTHS Điều 510)
-RE_CUOI_GIUA = re.compile(rf"(?<=[.;])\s+(?={_THONG_QUA})")
-# Chỗ hai Điểm dính trên cùng một dòng: "...; d) Lợi dụng..."
-RE_DIEM_DINH = re.compile(r"(?<=[;.:])\s+([a-zđ])\)\s+")
-
-
-def _diem_idx(c: str) -> int:
-    return DIEM_ORDER.index(c) if c in DIEM_ORDER else -1
 
 
 def _thu_tu(so: int, hau_to: str) -> float:
     """Điều 46a -> 46.01 để sắp sau Điều 46, trước Điều 47."""
-    return so + (0.01 * (_diem_idx(hau_to) + 1) if hau_to else 0)
+    return so + (0.01 * (DIEM_ORDER.index(hau_to) + 1) if hau_to else 0)
 
 
 def _heading(line: Line):
@@ -79,96 +64,38 @@ def _is_heading_title(line: Line) -> bool:
     return line.center or (letters and sum(c.isupper() for c in letters) / len(letters) > 0.8)
 
 
-def _tach_diem_dinh(text: str, next_letter_idx: int) -> list[str]:
-    """Tách dòng có nhiều Điểm dính nhau, chỉ khi chữ cái kế tiếp đúng thứ tự."""
-    parts = [text]
-    while True:
-        last = parts[-1]
-        m = None
-        for mm in RE_DIEM_DINH.finditer(last):
-            if _diem_idx(mm.group(1)) == next_letter_idx:
-                m = mm
-                break
-        if not m:
-            return parts
-        parts[-1] = last[:m.start()].rstrip()
-        parts.append(last[m.start():].lstrip())
-        next_letter_idx += 1
+def _parse_body(lines: list[str], tu_do: bool = False, khoan_cho_phep: set | None = None) -> dict:
+    """Thân một Điều -> doan_dan / diem / khoan.
 
-
-def _parse_body(lines: list[str], dieu_label: str, canh_bao: list, tu_do: bool = False,
-                khoan_cho_phep: set | None = None) -> dict:
+    Văn bản thường: khoản đánh số liên tục 1, 2, 3…
+    tu_do=True (nội dung trong câu lệnh sửa đổi): khoản bắt đầu từ số bất kỳ, có thể có chữ ("1a"),
+    chỉ cần tăng dần (và thuộc khoan_cho_phep nếu có).
+    """
     out = {"doan_dan": [], "diem": [], "khoan": []}
-    k_cur = None      # Khoản hiện tại
-    d_list = out["diem"]   # danh sách Điểm đang điền (của Điều hoặc của Khoản)
-    last_d = None     # chữ cái Điểm vừa gặp
-
-    def warn(loai, chi_tiet):
-        canh_bao.append({"loai": loai, "dieu": dieu_label, "chi_tiet": chi_tiet})
-
-    queue = list(lines)
-    while queue:
-        t = queue.pop(0)
-        # --- Khoản ---
-        if tu_do:
-            # Nội dung trong câu lệnh sửa đổi: khoản có thể bắt đầu từ số bất kỳ, có chữ ("1a"),
-            # chỉ nhận số tăng dần (và thuộc danh sách câu lệnh nêu, nếu có)
-            mk = RE_KHOAN_TD.match(t)
-            if mk:
-                lab = mk.group(1)
+    k_cur = None
+    d_list = out["diem"]
+    for t in lines:
+        mk = RE_KHOAN.match(t)
+        if mk:
+            lab = mk.group(1)
+            if tu_do:
                 ok = (khoan_cho_phep is None or lab in khoan_cho_phep) and \
                      (k_cur is None or khoa_khoan(lab) > khoa_khoan(k_cur["so"]))
-                if ok:
-                    so = int(lab) if lab.isdigit() else lab
-                    k_cur = {"so": so, "noi_dung": mk.group(2).strip(), "diem": [], "doan_sau": []}
-                    out["khoan"].append(k_cur)
-                    d_list, last_d = k_cur["diem"], None
-                    continue
-            mk, loose, expect_k = None, False, None
-        else:
-            expect_k = (k_cur["so"] + 1) if k_cur else 1
-            mk = RE_KHOAN.match(t)
-            loose = False
-            if not mk:
-                mk = RE_KHOAN_THIEU_CHAM.match(t)
-                loose = True
-        if mk and int(mk.group(1)) == expect_k:
-            if loose:
-                warn("khoan_thieu_dau_cham", t[:80])
-            k_cur = {"so": expect_k, "noi_dung": mk.group(2).strip(), "diem": [], "doan_sau": []}
-            out["khoan"].append(k_cur)
-            d_list, last_d = k_cur["diem"], None
-            # Khoản có thể chứa luôn điểm a) dính phía sau
-            split = _tach_diem_dinh(k_cur["noi_dung"], 0)
-            if len(split) > 1:
-                k_cur["noi_dung"] = split[0]
-                warn("diem_dinh_dong", f"khoản {expect_k}: {len(split) - 1} điểm tách ra")
-                queue[0:0] = split[1:]
-            continue
-        if mk and not loose and int(mk.group(1)) != expect_k:
-            warn("khoan_sai_thu_tu", f"mong đợi {expect_k}: {t[:80]}")
-        # --- Điểm ---
+            else:
+                ok = lab.isdigit() and int(lab) == (k_cur["so"] + 1 if k_cur else 1)
+            if ok:
+                k_cur = {"so": int(lab) if lab.isdigit() else lab, "noi_dung": mk.group(2).strip(),
+                         "diem": [], "doan_sau": []}
+                out["khoan"].append(k_cur)
+                d_list = k_cur["diem"]
+                continue
         md = RE_DIEM.match(t)
         if md:
-            c = md.group(1)
-            want = 0 if last_d is None else _diem_idx(last_d) + 1
-            got = _diem_idx(c)
-            if got >= want:
-                if got > want and not tu_do:
-                    thieu = ", ".join(DIEM_ORDER[want:got])
-                    where = f"khoản {k_cur['so']}" if k_cur else "Điều"
-                    warn("thieu_diem", f"{where}: thiếu điểm {thieu} (gặp {c}) – lỗi nguồn, cần bổ sung tay")
-                split = _tach_diem_dinh(md.group(2), got + 1)
-                if len(split) > 1:
-                    warn("diem_dinh_dong", f"điểm {c}: {len(split) - 1} điểm tách ra")
-                    queue[0:0] = split[1:]
-                d_list.append({"ky_hieu": c, "noi_dung": split[0].strip()})
-                last_d = c
-                continue
-            warn("diem_sai_thu_tu", f"sau {last_d}: {t[:80]}")
-        # --- Đoạn văn thường ---
+            d_list.append({"ky_hieu": md.group(1), "noi_dung": md.group(2).strip()})
+            continue
+        # đoạn văn thường
         if k_cur is None:
-            if d_list:   # chữ sau các Điểm của Điều -> nối vào Điểm cuối
+            if d_list:       # chữ sau các Điểm của Điều -> nối vào Điểm cuối
                 d_list[-1]["noi_dung"] += "\n" + t
             else:
                 out["doan_dan"].append(t)
@@ -176,7 +103,6 @@ def _parse_body(lines: list[str], dieu_label: str, canh_bao: list, tu_do: bool =
             k_cur["doan_sau"].append(t)
         else:
             k_cur["noi_dung"] += "\n" + t
-
     out["doan_dan"] = "\n".join(out["doan_dan"])
     for k in out["khoan"]:
         k["doan_sau"] = "\n".join(k["doan_sau"])
@@ -185,20 +111,17 @@ def _parse_body(lines: list[str], dieu_label: str, canh_bao: list, tu_do: bool =
 
 def parse_van_ban(lines: list[Line], tu_do: bool = False, khoan_cho_phep: set | None = None) -> dict:
     vi_tri = {"phan": None, "chuong": None, "muc": None, "tieu_muc": None}
-    dau, cuoi = [], []
-    dieu_list = []
-    canh_bao: list[dict] = []
+    dau, cuoi, dieu_list = [], [], []
     cur = None            # (meta, body_lines)
     pending_title = None  # heading đang chờ dòng tên
     ended = False
     prev_so = 0
 
     def flush():
-        if cur is None:
-            return
-        meta, body = cur
-        meta.update(_parse_body(body, f"Điều {meta['so_dieu']}", canh_bao, tu_do, khoan_cho_phep))
-        dieu_list.append(meta)
+        if cur is not None:
+            meta, body = cur
+            meta.update(_parse_body(body, tu_do, khoan_cho_phep))
+            dieu_list.append(meta)
 
     for ln in lines:
         t = ln.text
@@ -209,14 +132,6 @@ def parse_van_ban(lines: list[Line], tu_do: bool = False, khoan_cho_phep: set | 
             ended = True
             cuoi.append(t)
             continue
-        if cur is not None and (mg := RE_CUOI_GIUA.search(t)):
-            cur[1].append(t[:mg.start()].rstrip())
-            cuoi.append(t[mg.end():])
-            canh_bao.append({"loai": "cuoi_van_ban_chung_dong", "dieu": f"Điều {cur[0]['so_dieu']}",
-                             "chi_tiet": "câu thông qua nằm chung dòng với nội dung, đã tách ra"})
-            ended = True
-            continue
-
         # Dòng tên của heading vừa gặp (tên dài có thể chiếm nhiều dòng)
         if pending_title and _is_heading_title(ln):
             kind, label = pending_title
@@ -227,12 +142,9 @@ def parse_van_ban(lines: list[Line], tu_do: bool = False, khoan_cho_phep: set | 
         h = _heading(ln)
         if h:
             kind, label, title = h
-            if kind == "phan":
-                vi_tri.update(phan=None, chuong=None, muc=None, tieu_muc=None)
-            elif kind == "chuong":
-                vi_tri.update(chuong=None, muc=None, tieu_muc=None)
-            elif kind == "muc":
-                vi_tri.update(muc=None, tieu_muc=None)
+            reset = {"phan": ("phan", "chuong", "muc", "tieu_muc"), "chuong": ("chuong", "muc", "tieu_muc"),
+                     "muc": ("muc", "tieu_muc"), "tieu_muc": ("tieu_muc",)}[kind]
+            vi_tri.update({k: None for k in reset})
             vi_tri[kind] = f"{label} – {title}" if title else label
             pending_title = (kind, label)
             continue
@@ -242,12 +154,8 @@ def parse_van_ban(lines: list[Line], tu_do: bool = False, khoan_cho_phep: set | 
             flush()
             so = int(m.group(1))
             prev_so = so
-            so_dieu = f"{so}{m.group(2)}"
-            title = m.group(3).strip()
-            if not title:
-                canh_bao.append({"loai": "dieu_khong_ten", "dieu": f"Điều {so_dieu}", "chi_tiet": ""})
-            cur = ({"so_dieu": so_dieu, "thu_tu": _thu_tu(so, m.group(2)),
-                    "tieu_de": title, "vi_tri": dict(vi_tri)}, [])
+            cur = ({"so_dieu": f"{so}{m.group(2)}", "thu_tu": _thu_tu(so, m.group(2)),
+                    "tieu_de": m.group(3).strip(), "vi_tri": dict(vi_tri)}, [])
             continue
 
         if cur is None:
@@ -255,20 +163,18 @@ def parse_van_ban(lines: list[Line], tu_do: bool = False, khoan_cho_phep: set | 
         else:
             cur[1].append(t)
     flush()
-    return {"dau_van_ban": dau, "cuoi_van_ban": cuoi, "dieu": dieu_list, "canh_bao": canh_bao}
+    return {"dau_van_ban": dau, "cuoi_van_ban": cuoi, "dieu": dieu_list}
 
 
 # ---------------------------------------------------------------- hiển thị lại
-
 def render_diem(d: dict) -> str:
     return f"{d['ky_hieu']}) {d['noi_dung']}"
 
 
-def render_khoan(k: dict, diem: list[dict] | None = None) -> str:
-    """diem=None -> mọi Điểm; truyền danh sách con để chỉ in một số Điểm."""
+def render_khoan(k: dict) -> str:
     parts = [f"{k['so']}. {k['noi_dung']}".rstrip()]
-    parts += [render_diem(d) for d in (k["diem"] if diem is None else diem)]
-    if k.get("doan_sau") and (diem is None or (k["diem"] and diem and diem[-1] is k["diem"][-1])):
+    parts += [render_diem(d) for d in k["diem"]]
+    if k.get("doan_sau"):
         parts.append(k["doan_sau"])
     return "\n".join(p for p in parts if p)
 

@@ -83,8 +83,7 @@ def _doc_noi_dung(lines: list[str], khoan_cho_phep: set | None):
         if not parsed["dieu"]:
             raise Loi("không tách được Điều trong nội dung")
         return "dieu", parsed["dieu"]
-    warns: list = []
-    return "body", _parse_body(L, "noi_dung", warns, tu_do=True, khoan_cho_phep=khoan_cho_phep)
+    return "body", _parse_body(L, tu_do=True, khoan_cho_phep=khoan_cho_phep)
 
 
 # ------------------------------------------------------------------ lệnh cấu trúc
@@ -202,7 +201,6 @@ def ap_cau_truc(state: dict, c: dict) -> set[str]:
                 if loai == "bo_sung":
                     raise Loi(f"bổ sung điểm {P['ky_hieu']} nhưng điểm này đã có")
                 old["noi_dung"] = P["noi_dung"]
-                old.pop("nguon_bo_sung", None)
             else:
                 if not (cho_phep_them and P["ky_hieu"] in them_ok):
                     raise Loi(f"sửa điểm {P['ky_hieu']} khoản {kso} nhưng điểm này chưa có")
@@ -424,11 +422,9 @@ def _ten_vt(v) -> str:
 def main() -> int:
     vb = {json.loads(x)["so_hieu"]: json.loads(x) for x in (OUT / "van_ban.jsonl").read_text(encoding="utf-8").splitlines()}
     base = defaultdict(dict)
-    extra = {}
     for line in (OUT / "dieu.jsonl").read_text(encoding="utf-8").splitlines():
         r = json.loads(line)
         base[r["so_hieu"]][r["so_dieu"]] = {k: r[k] for k in ("so_dieu", "thu_tu", "tieu_de", "vi_tri", "doan_dan", "diem", "khoan", "trang_thai")}
-        extra[r["dieu_id"]] = {"bo_sung_tay": r.get("bo_sung_tay", [])}
     lenh = [json.loads(x) for x in (OUT / "lenh_sua_doi.jsonl").read_text(encoding="utf-8").splitlines()]
     thu_tu_vb = {v: i for i, v in enumerate(dict.fromkeys(c["van_ban"] for c in lenh))}
 
@@ -495,7 +491,6 @@ def main() -> int:
                 rec = {"dieu_id": did, "phien_ban_id": f"{did}@{vf}", "so_hieu": sh, **a,
                        "valid_from": vf, "valid_to": vt_, "chua_tung_ap_dung": ctua,
                        "nguon_thay_doi": [dict(t) for t in {tuple(x.items()) for x in srcs}],
-                       "bo_sung_tay": extra.get(did, {}).get("bo_sung_tay", []) if j == 0 else [],
                        "sha256": sha(f"Điều {s}. {a['tieu_de']}\n{body}")}
                 dieu_rows.append(rec)
                 n_pb += 1
