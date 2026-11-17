@@ -127,7 +127,12 @@ def main() -> int:
         # 1) dẫn chiếu nêu rõ trong chunk; 2) Điều nêu trong trích yếu văn bản ("Hướng dẫn áp dụng Điều 65
         #    của Bộ luật Hình sự") – mọi Điều của văn bản đó đều hướng dẫn Điều này
         for nguon, text in (("dan_chieu", c["noi_dung"]), ("trich_yeu", v["trich_yeu"])):
-            for sh, n, k, p in dict.fromkeys(dan_chieu(text)):
+            refs = dan_chieu(text)
+            # Văn bản hướng dẫn BLHS ghi tội kèm số Điều trong ngoặc: "Tội sản xuất trái phép chất ma túy (Điều 248)"
+            if "100/2015/QH13" in v["huong_dan_bo_luat"]:
+                refs += [("100/2015/QH13", m.group(1), None, None)
+                         for m in re.finditer(r"\bTội\s[^()]{3,150}?\(\s*(?:quy định tại\s+)?Điều\s+(\d+[a-zđ]?)\s*\)", text)]
+            for sh, n, k, p in dict.fromkeys(refs):
                 if any(l["dieu_id"] == f"{sh}#D{n}" and l["khoan"] in (k, None) for l in links):
                     continue
                 l = lien_ket(sh, n, k, p, c["valid_from"], c["valid_to"], nguon)

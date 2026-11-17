@@ -35,7 +35,7 @@ venv\Scripts\python.exe src\clean\lien_ket.py
 - Phần 1: 2.142 Điều, 3.170 chunk.
 - Phần 2: 447 thao tác sửa đổi đã áp; 3 thao tác ở BLTTHS (Điều 333, 454, 496) chưa áp vì mốc
   chèn xuất hiện nhiều lần.
-- Phần 3: 31/32 văn bản hướng dẫn đã vào corpus (854 chunk, 532 có liên kết tới Điều luật);
+- Phần 3: 31/32 văn bản hướng dẫn đã vào corpus (854 chunk, 537 có liên kết tới Điều luật);
   02/2020/NQ-HĐTP chưa đưa vào (file thực chất là Thông tư 02/2020/TT-TANDTC, không hướng dẫn 4 bộ luật).
 - Kết quả cuối (data/processed/):
   - `corpus_luat.jsonl` – 3.445 chunk Điều luật, có phiên bản theo thời gian. Chỉ kho này dùng để tìm kiếm.
