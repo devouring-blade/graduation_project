@@ -13,7 +13,9 @@ Hình sự (100/2015/QH13), Tố tụng hình sự (101/2015/QH13) – cùng vă
   - `chunking.py` – cắt chunk theo cấu trúc
   - `bo_sung.py` – áp bổ sung tay (`config/bo_sung_tay.json`) cho lỗi nguồn vbpl
   - `build_goc.py` – Phần 1: dựng corpus 4 bộ luật gốc
-  - `kiem_tra_dan_chieu.py` – kiểm dẫn chiếu chéo (chạy sau build, không sửa dữ liệu)
+  - `kiem_tra_dan_chieu.py` – kiểm dẫn chiếu chéo (không sửa dữ liệu; `--ngay YYYY-MM-DD` kiểm bản đã ghép)
+  - `vi_tri.py`, `doc_lenh.py` – Phần 2: đọc câu lệnh sửa đổi
+  - `ap_lenh.py` – Phần 2: áp lệnh, dựng phiên bản theo thời gian
 - `BAO_CAO_DU_LIEU.md` – báo cáo đầy đủ: thu thập, thiết kế, kết quả, việc còn lại.
 
 ## Chạy
@@ -26,4 +28,5 @@ venv\Scripts\python.exe src\clean\build_goc.py
 
 - Raw: xong.
 - Clean Phần 1 (4 bộ luật gốc, chưa ghép sửa đổi): xong – 2.142 Điều, 3.170 chunk, đạt mọi kiểm tra, không còn cảnh báo mở.
-- Clean Phần 2–4, embedding, truy xuất, benchmark: chưa làm.
+- Clean Phần 2 (ghép sửa đổi): xong phần code – 447 thao tác đã áp, 3 chờ quyết định; còn lỗi nguồn trong Luật 12/2017.
+- Clean Phần 3–4, embedding, truy xuất, benchmark: chưa làm.

@@ -32,6 +32,15 @@ RE_TIEU_MUC = re.compile(r"^(Tiểu\s+mục\s+\d+)\s*[.:]?\s*(.*)$", re.I)     #
 RE_KHOAN = re.compile(r"^(\d+)\.(?!\d)\s*(.*)$")   # tránh "1.000.000 đồng"
 RE_KHOAN_THIEU_CHAM = re.compile(r"^(\d+)\s+(?=[A-ZĐÀ-Ỹ])(.*)$")   # "1 Trường hợp..." (lỗi nguồn)
 RE_DIEM = re.compile(r"^([a-zđ])\)\s*(.*)$")
+RE_KHOAN_TD = re.compile(r"^(\d+[a-zđ]?)\.(?!\d)\s*(.*)$")              # nội dung sửa đổi: "1a. …"
+
+
+def khoa_khoan(so) -> tuple:
+    """Khóa sắp xếp số khoản: 1 < 1a < 1b < 2."""
+    s = str(so)
+    num = int(re.match(r"\d+", s).group())
+    suf = s[len(str(num)):]
+    return (num, DIEM_ORDER.index(suf) + 1 if suf else 0)
 _THONG_QUA = r"(?:Bộ luật|Luật|Nghị quyết|Nghị định|Thông tư liên tịch|Thông tư) này (?:đã )?được [^.]*thông qua"
 RE_CUOI = re.compile(
     rf"^({_THONG_QUA}|CHỦ TỊCH|TM\.|KT\.|Nơi nhận)"
@@ -87,7 +96,8 @@ def _tach_diem_dinh(text: str, next_letter_idx: int) -> list[str]:
         next_letter_idx += 1
 
 
-def _parse_body(lines: list[str], dieu_label: str, canh_bao: list) -> dict:
+def _parse_body(lines: list[str], dieu_label: str, canh_bao: list, tu_do: bool = False,
+                khoan_cho_phep: set | None = None) -> dict:
     out = {"doan_dan": [], "diem": [], "khoan": []}
     k_cur = None      # Khoản hiện tại
     d_list = out["diem"]   # danh sách Điểm đang điền (của Điều hoặc của Khoản)
@@ -100,12 +110,28 @@ def _parse_body(lines: list[str], dieu_label: str, canh_bao: list) -> dict:
     while queue:
         t = queue.pop(0)
         # --- Khoản ---
-        expect_k = (k_cur["so"] + 1) if k_cur else 1
-        mk = RE_KHOAN.match(t)
-        loose = False
-        if not mk:
-            mk = RE_KHOAN_THIEU_CHAM.match(t)
-            loose = True
+        if tu_do:
+            # Nội dung trong câu lệnh sửa đổi: khoản có thể bắt đầu từ số bất kỳ, có chữ ("1a"),
+            # chỉ nhận số tăng dần (và thuộc danh sách câu lệnh nêu, nếu có)
+            mk = RE_KHOAN_TD.match(t)
+            if mk:
+                lab = mk.group(1)
+                ok = (khoan_cho_phep is None or lab in khoan_cho_phep) and \
+                     (k_cur is None or khoa_khoan(lab) > khoa_khoan(k_cur["so"]))
+                if ok:
+                    so = int(lab) if lab.isdigit() else lab
+                    k_cur = {"so": so, "noi_dung": mk.group(2).strip(), "diem": [], "doan_sau": []}
+                    out["khoan"].append(k_cur)
+                    d_list, last_d = k_cur["diem"], None
+                    continue
+            mk, loose, expect_k = None, False, None
+        else:
+            expect_k = (k_cur["so"] + 1) if k_cur else 1
+            mk = RE_KHOAN.match(t)
+            loose = False
+            if not mk:
+                mk = RE_KHOAN_THIEU_CHAM.match(t)
+                loose = True
         if mk and int(mk.group(1)) == expect_k:
             if loose:
                 warn("khoan_thieu_dau_cham", t[:80])
@@ -128,7 +154,7 @@ def _parse_body(lines: list[str], dieu_label: str, canh_bao: list) -> dict:
             want = 0 if last_d is None else _diem_idx(last_d) + 1
             got = _diem_idx(c)
             if got >= want:
-                if got > want:
+                if got > want and not tu_do:
                     thieu = ", ".join(DIEM_ORDER[want:got])
                     where = f"khoản {k_cur['so']}" if k_cur else "Điều"
                     warn("thieu_diem", f"{where}: thiếu điểm {thieu} (gặp {c}) – lỗi nguồn, cần bổ sung tay")
@@ -157,7 +183,7 @@ def _parse_body(lines: list[str], dieu_label: str, canh_bao: list) -> dict:
     return out
 
 
-def parse_van_ban(lines: list[Line]) -> dict:
+def parse_van_ban(lines: list[Line], tu_do: bool = False, khoan_cho_phep: set | None = None) -> dict:
     vi_tri = {"phan": None, "chuong": None, "muc": None, "tieu_muc": None}
     dau, cuoi = [], []
     dieu_list = []
@@ -171,7 +197,7 @@ def parse_van_ban(lines: list[Line]) -> dict:
         if cur is None:
             return
         meta, body = cur
-        meta.update(_parse_body(body, f"Điều {meta['so_dieu']}", canh_bao))
+        meta.update(_parse_body(body, f"Điều {meta['so_dieu']}", canh_bao, tu_do, khoan_cho_phep))
         dieu_list.append(meta)
 
     for ln in lines:

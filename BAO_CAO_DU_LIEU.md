@@ -462,13 +462,78 @@ Lỗi bộ tách cấu trúc phát hiện nhờ bước này, đã sửa (`goc-1
 Giới hạn: kiểm tra này chỉ bắt chỗ mất được câu khác nhắc tới; không thay được việc so toàn văn
 với bản chính thức.
 
+## 7c. Kết quả Clean – Phần 2: ghép sửa đổi (17/11/2026)
+
+Chạy (sau `build_goc.py`):
+```
+venv\Scripts\python.exe src\clean\doc_lenh.py      # đọc câu lệnh -> lenh_sua_doi.jsonl
+venv\Scripts\python.exe src\clean\ap_lenh.py       # áp lệnh -> dieu_phien_ban.jsonl, chunks_phien_ban.jsonl
+venv\Scripts\python.exe src\clean\kiem_tra_dan_chieu.py --ngay 2026-07-01   # kiểm bản hiện hành
+```
+
+**Cách làm – không mặc định văn bản nào sửa luật nào.** `doc_lenh.py` duyệt cả 18 văn bản trong
+`sua_doi/` và `lien_quan/`; mỗi câu lệnh tự xác định văn bản bị sửa từ chính câu ("… Điều 32 của Bộ
+luật Tố tụng dân sự số 92/2015/QH13") hoặc dòng phạm vi bao ngoài, theo số hiệu nếu có. Câu lệnh
+sửa luật khác được giữ (nhãn `ngoai:<số hiệu>`, dùng cho Phần 3 nếu là văn bản hướng dẫn).
+Trong `lien_quan/` chỉ nhận câu lệnh có xác định được văn bản bị sửa (câu thường của luật đó như
+"Thay mặt…", "Bỏ trốn…" bị loại).
+
+Kết quả đọc: 627 câu lệnh; nhắm 4 bộ luật gốc: BLHS 256, BLTTHS 104, BLTTDS 47, **BLDS 0** (không
+văn bản nào trong kho sửa BLDS). Ngày hiệu lực đọc từ chính văn bản; ngoại lệ đã đọc: 59/2024 (ngoại
+lệ là Điều 139, 162 của chính luật đó), 106/2025 (Điều 3, 5, 11, 12, 20, 21, 27 của chính luật đó),
+85/2025 ("trừ trường hợp Luật Tư pháp người chưa thành niên có quy định khác") – không ngoại lệ nào
+nêu điều khoản sửa bộ luật gốc.
+
+**Áp lệnh** (`ap_lenh.py`, theo thứ tự ngày; không sửa đè):
+
+| Bộ luật | Thao tác đã áp | Lỗi | Phiên bản Điều | Điều có thay đổi | Bản chưa từng áp dụng |
+| --- | --- | --- | --- | --- | --- |
+| BLHS | 288 | 0 | 688 | 226 | 203 |
+| BLTTHS | 111 | 3 | 676 | 153 | 0 |
+| BLTTDS | 48 | 0 | 575 | 58 | 0 |
+| BLDS | 0 | 0 | 689 | 0 | 0 |
+
+Chunk theo phiên bản: 3.441 (chunk không đổi chữ qua các phiên bản giữ một bản, kéo dài hiệu lực);
+đang hiệu lực: 3.022. "Bản chưa từng áp dụng" = bản gốc 2015 của Điều bị Luật 12/2017 sửa (cùng hiệu
+lực 01/01/2018) – giữ trong `dieu_phien_ban.jsonl` (`chua_tung_ap_dung: true`), không sinh chunk.
+
+Ví dụ kiểm: BLHS Điều 40 – [2018-01-01, 2025-07-01) bản 2015; từ 2025-07-01 theo Luật 86/2025 (điểm c
+khoản 3: "Người mắc bệnh ung thư giai đoạn cuối"). BLHS Điều 91 (Chương XII) – bản 2015 chưa từng áp
+dụng; bản 12/2017 từ 2018-01-01; bãi bỏ từ 2026-01-01 (Luật 59/2024). Điều 217a, 256a, 506a (BLTTHS)
+được bổ sung đúng ngày.
+
+**Kiểm tra:** mỗi Điều/chunk tại một ngày chỉ một phiên bản – đạt; dò lỗi chữ do ghép (từ lặp, dấu
+câu lặp) trên mọi phiên bản – không còn; dẫn chiếu chéo trên bản hiệu lực tại 2018-01-01,
+2021-12-01, 2025-07-01, 2026-07-01 – chỉ còn chỗ do lỗi nguồn (dưới).
+
+Lỗi của code phát hiện nhờ kiểm tra và đã sửa: lệnh có nhiều mốc "trước cụm từ A …, trước cụm từ B…"
+từng bị hiểu nhầm mốc thành lệnh "bỏ" (làm mất chữ ở BLHS Điều 52); "sửa đổi đoạn mở đầu khoản 1"
+từng thay cả khoản (mất điểm a–c BLTTDS Điều 317); lệnh nhắm "đoạn 2 khoản 2" từng áp lên cả khoản.
+
+**Chưa áp được – cần quyết định (3 thao tác, BLTTHS):** mốc "vào sau cụm từ X" xuất hiện nhiều lần
+trong vị trí được chỉ:
+- 99/2025 khoản 55: ", Trưởng phân trại thuộc trại tạm giam" vào sau "Trưởng Nhà tạm giữ" – khoản 3
+  Điều 333 có 3 chỗ.
+- 99/2025 khoản 55: "hoặc có đủ khả năng nhận thức, đủ khả năng điều khiển hành vi" vào sau "đã khỏi
+  bệnh" – khoản 2 Điều 454 có 2 chỗ.
+- 103/2025 điểm g: "người đang bị tạm giam," vào sau "người giám định," – Điều 496 có 2 chỗ.
+
+**Áp được nhưng đánh dấu để đối chiếu:** 4 thao tác khớp không phân biệt hoa/thường (văn bản sửa trích
+"Ủy ban Tư pháp", bản gốc viết "Ủy ban tư pháp"…); 3 thao tác chèn vào đầu câu (chữ hoa đầu câu cũ giữ
+nguyên). Xem `ghi_chu` trong `ap_lenh_nhat_ky.jsonl`.
+
+**Lỗi nguồn vbpl trong Luật 12/2017/QH14 (cần văn bản chính thức):** ký tự điểm bị đọc sai làm điểm
+bị dính vào điểm trước: "1)" thay "l)" ở BLHS Điều 190, 191, 192, 232 (3 chỗ), 249, 250, 252;
+"6)" thay "g)" ở Điều 150, 233; khoản 4 Điều 252 (bản sửa) không có điểm e. (Lỗi chính tả "Quà/Quá
+thuốc phiện" không xử lý.)
+
 ## 8. Việc còn lại
 
 | Việc | Trạng thái |
 | --- | --- |
 | Raw | Xong |
 | Clean – phần 1: cắt chunk 4 bộ luật gốc | **Xong** (mục 7b); không còn cảnh báo mở, dẫn chiếu chéo khớp hết. Chưa so toàn văn với bản chính thức |
-| Clean – phần 2: ghép sửa đổi (gồm bãi bỏ Chương) | Đã thiết kế, cần viết code |
+| Clean – phần 2: ghép sửa đổi (gồm bãi bỏ Chương) | **Xong phần code** (mục 7c); còn 3 thao tác chờ quyết định, lỗi "1)"/"6)" của Luật 12/2017 chờ văn bản chính thức |
 | Clean – phần 3: hướng dẫn + liên kết 2 chiều | Đã thiết kế, cần viết code |
 | Clean – phần 4: kiểm tra với 2 văn bản hợp nhất | Đã thiết kế |
 | Chọn mô hình embedding | Chưa – đề xuất `BAAI/bge-m3` (tiếng Việt tốt, đọc đoạn dài) |

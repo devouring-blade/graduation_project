@@ -71,10 +71,19 @@ def units(d: dict):
 
 
 def main() -> int:
+    # Mặc định kiểm bản gốc (dieu.jsonl). "--ngay YYYY-MM-DD": kiểm các phiên bản đang hiệu lực
+    # tại ngày đó trong dieu_phien_ban.jsonl (sau khi ghép sửa đổi).
+    ngay = sys.argv[sys.argv.index("--ngay") + 1] if "--ngay" in sys.argv else None
     dieu = defaultdict(dict)                  # so_hieu -> so_dieu -> record
-    for line in (OUT / "dieu.jsonl").read_text(encoding="utf-8").splitlines():
+    src = "dieu_phien_ban.jsonl" if ngay else "dieu.jsonl"
+    for line in (OUT / src).read_text(encoding="utf-8").splitlines():
         r = json.loads(line)
+        if ngay and not (r["valid_from"] <= ngay and (r["valid_to"] is None or ngay < r["valid_to"])
+                         and r["trang_thai"] == "hieu_luc"):
+            continue
         dieu[r["so_hieu"]][r["so_dieu"]] = r
+    if ngay:
+        print(f"Kiểm phiên bản hiệu lực ngày {ngay}")
 
     def ton_tai(sh, n, k, p):
         """Trả về None nếu tồn tại, ngược lại chuỗi mô tả phần không tồn tại."""
@@ -87,7 +96,7 @@ def main() -> int:
             if any(x["ky_hieu"] == p for x in a["diem"]):
                 return None
             return f"Điều {n} không có điểm {p} (ngoài khoản)"
-        kk = next((x for x in a["khoan"] if x["so"] == int(k)), None)
+        kk = next((x for x in a["khoan"] if str(x["so"]) == str(k)), None)
         if kk is None:
             return f"Điều {n} không có khoản {k} (có {len(a['khoan'])} khoản)"
         if p is None or any(x["ky_hieu"] == p for x in kk["diem"]):
@@ -160,7 +169,7 @@ def main() -> int:
                             "khop": err is None, "loi": err,
                         })
 
-    with (OUT / "dan_chieu.jsonl").open("w", encoding="utf-8", newline="\n") as f:
+    with (OUT / ("dan_chieu.jsonl" if not ngay else f"dan_chieu_{ngay}.jsonl")).open("w", encoding="utf-8", newline="\n") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
