@@ -164,9 +164,21 @@ def main() -> int:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
+    # Chỗ không khớp đã được người duyệt giải thích (config/bo_sung_tay.json)
+    cfg_path = ROOT / "config" / "bo_sung_tay.json"
+    giai_thich = json.loads(cfg_path.read_text(encoding="utf-8")).get("dan_chieu_da_giai_thich", []) if cfg_path.exists() else []
+    for r in rows:
+        for g in giai_thich:
+            if not r["khop"] and r["so_hieu"] == g["so_hieu"] and r["tu"] == g["tu"] and r["cau"] == g["cau"]:
+                r["giai_thich"] = g["ket_luan"]
+
     print("Thống kê:", dict(stats))
+    gt = [r for r in rows if r.get("giai_thich")]
+    print(f"Đã giải thích: {len(gt)}")
+    for r in gt:
+        print(f"  [{r['so_hieu']}] {r['tu']}: \"{r['cau']}\" – {r['giai_thich'][:90]}…")
     for loai in ("noi_bo", "tran"):
-        bad = [r for r in rows if r["loai"] == loai and not r["khop"]]
+        bad = [r for r in rows if r["loai"] == loai and not r["khop"] and not r.get("giai_thich")]
         print(f"\n=== {loai}: {len(bad)} không khớp")
         for r in bad:
             print(f"  [{r['so_hieu']}] {r['tu']}: \"{r['cau'][:90]}\" -> {r['loi']}")

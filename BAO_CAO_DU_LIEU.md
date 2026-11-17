@@ -363,7 +363,7 @@ Code: `src/clean/` (`build_goc.py` là điểm chạy). Đầu ra trong `data/pr
 | `van_ban.jsonl` | 4 dòng – thông tin văn bản, gồm `ngay_hieu_luc` (thực tế) và `ngay_hieu_luc_ghi_trong_vb` |
 | `dieu.jsonl` | 2.142 dòng – mỗi dòng một phiên bản Điều, giữ cây `doan_dan` / `khoan[].diem[]` / `doan_sau`, vị trí Phần/Chương/Mục/Tiểu mục |
 | `chunks.jsonl` | 3.170 chunk – `text` (đem embed, có dòng đầu tên văn bản – Chương – Điều), `noi_dung` (chữ gốc), `trich_dan`, `valid_from`/`valid_to`, `huong_dan_boi`/`huong_dan_cho` (trống) |
-| `canh_bao.jsonl` | 11 cảnh báo, mỗi dòng có `trang_thai`: tu_dong_sua 6, da_bo_sung 2, xac_nhan_khong_loi 1, da_xac_minh 2; còn mở 0 |
+| `canh_bao.jsonl` | 12 cảnh báo, mỗi dòng có `trang_thai`: tu_dong_sua 6, da_bo_sung 2, da_sua_tay 1, xac_nhan_khong_loi 1, da_xac_minh 2; còn mở 0 |
 | `thong_ke.json` | số liệu + kết quả kiểm tra |
 
 | Bộ luật | Điều | Khoản | Điểm | Chunk (Điều / Khoản / Điểm) | Hiệu lực dùng |
@@ -426,24 +426,33 @@ luật này", "khoản 3 Điều này", "các điểm từ điểm a đến đi�
 135…") và kiểm Điều/Khoản/Điểm được nhắc có tồn tại. Không sửa dữ liệu; ghi
 `data/processed/dan_chieu.jsonl`.
 
-Kết quả (sau build `goc-1.2`):
+Kết quả (sau build `goc-1.3`):
 
 | Loại | Khớp | Không khớp |
 | --- | --- | --- |
-| Nội bộ chắc chắn ("Điều này", "khoản này", "của Bộ luật này") | 1.975 | 1 |
-| Trần (không ghi văn bản) | 276 | 1 |
+| Nội bộ chắc chắn ("Điều này", "khoản này", "của Bộ luật này") | 1.976 | 0 |
+| Trần (không ghi văn bản) | 276 | 0 (+1 đã giải thích) |
 | Sang văn bản khác (bỏ qua) | 22 | – |
 
 Độ phủ của bộ dò: trong 1.493 lần xuất hiện "Điều này" / "khoản này" / "của Bộ luật này", mọi lần
 gắn với Điều/Khoản/Điểm cụ thể đều được dò; phần còn lại là câu chung ("theo quy định của Bộ luật
 này") hoặc dẫn tới Chương.
 
-Hai chỗ không khớp:
-1. **BLTTDS Điều 27 khoản 8** dẫn "điểm e khoản 2 Điều 470 của Bộ luật này"; dữ liệu vbpl khoản 2
-   Điều 470 chỉ có điểm a–đ. **Chưa kết luận** – cần đối chiếu bản chính thức (đang chờ).
+Hai chỗ không khớp ở lần chạy đầu, đã xử lý:
+1. **BLTTDS Điều 27 khoản 8** – vbpl ghi "điểm **e** khoản 2 Điều 470"; khoản 2 Điều 470 chỉ có
+   điểm a–đ. Đối chiếu luatvietnam (`data/bo_sung_tay/luatvietnam_BLTTDS_D27_D470.txt`):
+   - Điều 470: 14/14 đơn vị trùng từng chữ với vbpl; khoản 2 có a–đ ở cả hai nguồn.
+   - Điều 27: 21 đơn vị trùng; khoản 8 khác **đúng 1 ký tự**: luatvietnam ghi "điểm **đ**".
+   - Không văn bản sửa đổi nào trong kho chạm Điều 27 hay 470 BLTTDS (85/2025 chỉ nhắc "các điều
+     27, 29, 31 và 33" trong nội dung sửa điều khác).
+   - **Hai nguồn mâu thuẫn**; dùng bản luatvietnam (người dùng chọn làm nguồn nội dung thật; khớp
+     với cấu trúc Điều 470). Mục `sua_noi_dung` trong `config/bo_sung_tay.json`, chốt an toàn: chỉ
+     cho phép khác vbpl đúng cụm "điểm e khoản 2 Điều 470" → "điểm đ khoản 2 Điều 470". Chữ vbpl
+     giữ lại ở trường `noi_dung_vbpl`. **Chưa đối chiếu Công báo** – nguồn có thẩm quyền cuối cùng.
 2. BLTTDS Điều 517 khoản 2 "điểm h khoản 1 Điều 192": theo câu chữ ("Bộ luật tố tụng dân sự số
    24/2004/QH11 … hết hiệu lực…, trừ các quy định tại Điều 159 và điểm h khoản 1 Điều 192 tiếp tục
-   có hiệu lực") đây là quy định của **BLTTDS 2004**, không phải của bộ luật này → không phải lỗi dữ liệu.
+   có hiệu lực") đây là quy định của **BLTTDS 2004**, không phải lỗi dữ liệu. Ghi ở
+   `dan_chieu_da_giai_thich` trong config.
 
 Lỗi bộ tách cấu trúc phát hiện nhờ bước này, đã sửa (`goc-1.2`):
 - Dòng gạch "_____" trước phần ký bị tính vào nội dung Điều 517 BLTTDS và Điều 510 BLTTHS.
@@ -458,7 +467,7 @@ với bản chính thức.
 | Việc | Trạng thái |
 | --- | --- |
 | Raw | Xong |
-| Clean – phần 1: cắt chunk 4 bộ luật gốc | **Xong** (mục 7b); chờ đối chiếu BLTTDS Điều 27 k8 / Điều 470 k2 |
+| Clean – phần 1: cắt chunk 4 bộ luật gốc | **Xong** (mục 7b); không còn cảnh báo mở, dẫn chiếu chéo khớp hết. Chưa so toàn văn với bản chính thức |
 | Clean – phần 2: ghép sửa đổi (gồm bãi bỏ Chương) | Đã thiết kế, cần viết code |
 | Clean – phần 3: hướng dẫn + liên kết 2 chiều | Đã thiết kế, cần viết code |
 | Clean – phần 4: kiểm tra với 2 văn bản hợp nhất | Đã thiết kế |

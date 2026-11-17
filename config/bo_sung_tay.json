@@ -36,5 +36,27 @@
       "nguon": "luatvietnam.vn, người dùng chép tay ngày 17/11/2026",
       "doi_chieu": "Hai nguồn độc lập (vbpl, luatvietnam) giống nhau; 27 đơn vị trùng từng chữ, chỉ khác cách bỏ dấu 'phá hủy'/'phá huỷ' – giữ chữ vbpl."
     }
+  ],
+
+  "dan_chieu_da_giai_thich": [
+    {
+      "so_hieu": "92/2015/QH13",
+      "tu": "Điều 517 khoản 2",
+      "cau": "điểm h khoản 1 Điều 192",
+      "ket_luan": "Dẫn chiếu sang BLTTDS 24/2004/QH11, không phải bộ luật này. Câu chữ: 'Bộ luật tố tụng dân sự số 24/2004/QH11 … hết hiệu lực…, trừ các quy định tại Điều 159 và điểm h khoản 1 Điều 192 tiếp tục có hiệu lực thi hành đến hết ngày 31 tháng 12 năm 2016.'"
+    }
+  ],
+
+  "sua_noi_dung": [
+    {
+      "id": "BLTTDS-D27-K8-diem-dd",
+      "so_hieu": "92/2015/QH13",
+      "dieu": "27",
+      "khoan": 8,
+      "chi_duoc_khac": {"cu": "điểm e khoản 2 Điều 470", "moi": "điểm đ khoản 2 Điều 470"},
+      "lay_tu": "data/bo_sung_tay/luatvietnam_BLTTDS_D27_D470.txt",
+      "nguon": "luatvietnam.vn, người dùng chép tay ngày 17/11/2026",
+      "doi_chieu": "HAI NGUỒN MÂU THUẪN 1 ký tự: vbpl 'điểm e', luatvietnam 'điểm đ'. Theo luatvietnam vì người dùng chọn làm nguồn nội dung thật; bản này khớp với khoản 2 Điều 470 (cả hai nguồn chỉ có điểm a–đ, nội dung điểm đ đúng việc khoản 8 Điều 27 nói tới). Các đơn vị khác của Điều 27 (21) và Điều 470 (14) trùng từng chữ. Không văn bản sửa đổi nào trong kho chạm Điều 27/470 BLTTDS. Chưa đối chiếu Công báo."
+    }
   ]
 }

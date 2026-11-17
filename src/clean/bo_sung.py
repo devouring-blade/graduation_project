@@ -86,6 +86,29 @@ def ap_dung(root: Path, cfg: dict, so_hieu: str, dieu_list: list[dict], canh_bao
             continue
         _dong_canh_bao(canh_bao, so_hieu, m["dieu"], m["loai"], m.get("khoan"), "xac_nhan_khong_loi", m)
 
+    # Sửa chữ trong một Khoản khi nguồn vbpl khác nguồn đối chiếu.
+    # Chốt an toàn: chữ mới phải đúng bằng chữ vbpl với DUY NHẤT thay đổi "cu" -> "moi" đã duyệt.
+    for m in cfg.get("sua_noi_dung", []):
+        if m["so_hieu"] != so_hieu:
+            continue
+        k = _khoan(by_so[m["dieu"]], m["khoan"])
+        moi = _khoan(_doc_bang_chung(str(root / m["lay_tu"]))[m["dieu"]], m["khoan"])["noi_dung"]
+        cu, thay = m["chi_duoc_khac"]["cu"], m["chi_duoc_khac"]["moi"]
+        if k["noi_dung"] == moi:
+            loi.append(f"{m['id']}: vbpl đã trùng bằng chứng – mục sửa tay đã cũ, cần xem lại")
+            continue
+        if k["noi_dung"].count(cu) != 1 or k["noi_dung"].replace(cu, thay) != moi:
+            loi.append(f"{m['id']}: chữ bằng chứng khác vbpl ngoài thay đổi đã duyệt '{cu}' -> '{thay}'")
+            continue
+        k["noi_dung_vbpl"] = k["noi_dung"]
+        k["noi_dung"] = moi
+        k["nguon_sua_tay"] = m["id"]
+        by_so[m["dieu"]].setdefault("bo_sung_tay", []).append(m["id"])
+        canh_bao.append({"so_hieu": so_hieu, "loai": "nguon_mau_thuan", "dieu": f"Điều {m['dieu']}",
+                         "chi_tiet": f"khoản {m['khoan']}: vbpl '{cu}', {m['nguon']} '{thay}' – dùng bản sau",
+                         "trang_thai": "da_sua_tay",
+                         "xu_ly": {"id": m["id"], "nguon": m["nguon"], "lay_tu": m["lay_tu"]}})
+
 
 def _dong_canh_bao(canh_bao, so_hieu, dieu, loai, khoan, trang_thai, m):
     found = False
