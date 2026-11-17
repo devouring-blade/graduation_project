@@ -19,7 +19,7 @@ from html_text import Line
 
 DIEM_ORDER = "abcdđeghiklmnopqrstuvxy"
 
-RE_DIEU = re.compile(r"^Điều\s+(\d+)([a-zđ]?)\s*\.\s*(.*)$")
+RE_DIEU = re.compile(r"^Điều\s+(\d+)([a-zđ]?)\s*(?:\.\s*(.*)|$)")       # "Điều 1." hoặc "Điều 1" (NQ 103, 110/2015)
 RE_PHAN = re.compile(r"^(Phần\s+thứ\s+\S+)\s*[.:]?\s*(.*)$", re.I)
 RE_CHUONG = re.compile(r"^(Chương\s+[IVXLC]+)\s*[.:]?\s*(.*)$", re.I)
 RE_MUC = re.compile(r"^(Mục\s+(?:\d+|[IVXLC]+))\s*[.:]?\s*(.*)$")          # BLTTHS dùng "Mục I"
@@ -116,6 +116,9 @@ def parse_van_ban(lines: list[Line], tu_do: bool = False, khoan_cho_phep: set | 
     pending_title = None  # heading đang chờ dòng tên
     ended = False
     prev_so = 0
+    # Câu "Nghị quyết này đã được … thông qua …" có thể nằm TRONG Điều hiệu lực (văn bản HĐTP),
+    # nên chỉ coi là hết văn bản khi phía sau không còn tiêu đề Điều nào.
+    cuoi_dieu = max((i for i, ln in enumerate(lines) if ln.bold and RE_DIEU.match(ln.text)), default=-1)
 
     def flush():
         if cur is not None:
@@ -123,12 +126,12 @@ def parse_van_ban(lines: list[Line], tu_do: bool = False, khoan_cho_phep: set | 
             meta.update(_parse_body(body, tu_do, khoan_cho_phep))
             dieu_list.append(meta)
 
-    for ln in lines:
+    for i, ln in enumerate(lines):
         t = ln.text
         if ended:
             cuoi.append(t)
             continue
-        if cur is not None and RE_CUOI.match(t):
+        if cur is not None and i > cuoi_dieu and RE_CUOI.match(t):
             ended = True
             cuoi.append(t)
             continue
@@ -155,7 +158,7 @@ def parse_van_ban(lines: list[Line], tu_do: bool = False, khoan_cho_phep: set | 
             so = int(m.group(1))
             prev_so = so
             cur = ({"so_dieu": f"{so}{m.group(2)}", "thu_tu": _thu_tu(so, m.group(2)),
-                    "tieu_de": m.group(3).strip(), "vi_tri": dict(vi_tri)}, [])
+                    "tieu_de": (m.group(3) or "").strip(), "vi_tri": dict(vi_tri)}, [])
             continue
 
         if cur is None:

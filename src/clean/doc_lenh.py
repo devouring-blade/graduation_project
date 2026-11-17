@@ -66,7 +66,7 @@ def nhan_luat(text: str) -> str | None:
 RE_MARK = re.compile(r"^(?:(?P<dieu>Điều\s+\d+[a-zđ]?\.)|(?P<k>\d+[a-zđ]?\.)|(?P<d>[a-zđ]\)))\s*")
 # Động từ câu lệnh PHẢI đi kèm đối tượng sửa, để "Thay mặt…", "Thay đổi…", "Bỏ trốn…",
 # "Bổ sung thông tin", "Sửa lỗi kỹ thuật" không bị coi là câu lệnh.
-OBJ = r"(?:các\s+|một\s+số\s+|tên\s+|toàn\s+bộ\s+)?(?:điểm|khoản|Điều|điều|chương|Chương|mục|Mục|phần|Phần|từ|cụm\s+từ|dấu|đoạn|Phụ\s+lục|Mẫu)\b"
+OBJ = r"(?:các\s+|một\s+số\s+|tên\s+|toàn\s+bộ\s+)?(?:điểm|khoản|Điều|điều|chương|Chương|mục|Mục|phần|Phần|từ|cụm\s+từ|dấu|đoạn|Phụ\s+lục|phụ\s+lục|Mẫu|mẫu|biểu\s+mẫu)\b"
 RE_VERB = re.compile(
     r"^(?:Sửa đổi|Bổ sung|Bãi bỏ|Thay thế|Thay|Bỏ|Hủy bỏ|Huỷ bỏ)"
     r"(?:(?:\s*,\s*|\s+và\s+)(?:sửa đổi|bổ sung|bãi bỏ|thay thế|hủy bỏ|huỷ bỏ|bỏ))*"
@@ -176,6 +176,14 @@ def doc_cum_tu(text: str, luat_mac_dinh: str | None, dieu_mac_dinh: str | None):
         clause_ops = ops[len(ops) - len(found_spans):]
         for a, b in zip(reversed(clause_ops[:-1]), reversed(clause_ops[1:])):
             if not a["vi_tri"] and re.fullmatch(r"[\s,]*(?:và)?[\s,]*", a["_loc_text"]):
+                a["vi_tri"] = [dict(v) for v in b["vi_tri"]] if b["vi_tri"] != "TOAN_BO" else "TOAN_BO"
+                a["bo_luat"] = b["bo_luat"]
+    # "Thay thế cụm từ A bằng B; cụm từ C bằng D tại ví dụ khoản 3 Điều 3": vế không có vị trí
+    # (kể cả khác mệnh đề) dùng chung vị trí của thao tác sau gần nhất
+    for i, a in enumerate(ops):
+        if not a["vi_tri"] and not a["_loc_text"].strip(" ,;và"):
+            b = next((b for b in ops[i + 1:] if b["vi_tri"]), None)
+            if b:
                 a["vi_tri"] = [dict(v) for v in b["vi_tri"]] if b["vi_tri"] != "TOAN_BO" else "TOAN_BO"
                 a["bo_luat"] = b["bo_luat"]
     # Vị trí thiếu Điều: mượn Điều của vị trí sau gần nhất (trong cùng câu lệnh), hoặc Điều mặc định
@@ -298,6 +306,10 @@ def doc_van_ban(path: Path, so_hieu: str, cfg: dict, nhom: str = "sua_doi") -> t
         base = {"id": rid, "van_ban": so_hieu, "ngay_hieu_luc": ngay, "dong": k, "cap": lvl,
                 "cau_goc": t, "bo_luat": luat, "trang_thai": "ok", "ly_do": None}
 
+        # Thay/bỏ biểu mẫu kèm theo văn bản: biểu mẫu không nằm trong dữ liệu -> ghi nhận, không áp
+        if re.match(r"^(?:Thay thế|Bãi bỏ|Bỏ|Bổ sung|Sửa đổi)[^.:]*?\b(?:mẫu số|Mẫu số|biểu mẫu|một số mẫu)", rest):
+            out.append({**base, "loai": "mau"})
+            continue
         has_content = k in content_of
         phrase = bool(RE_OP.search(rest)) and not has_content
         # Điều mặc định cho câu lệnh con: "Sửa đổi, bổ sung một số khoản của Điều 123 …" / "Sửa đổi, bổ sung Điều 3 như sau:" (khung)

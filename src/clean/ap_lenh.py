@@ -419,10 +419,22 @@ def _ten_vt(v) -> str:
 
 
 # ------------------------------------------------------------------ dựng phiên bản
+def _cung_vb(nhan: str | None, so_hieu: str) -> bool:
+    """Nhãn văn bản bị sửa trong lenh_sua_doi ("100/2015/QH13" hoặc "ngoai:02/2018/NQ-HĐTP") khớp số hiệu."""
+    return bool(nhan) and nhan.removeprefix("ngoai:") == so_hieu
+
+
 def main() -> int:
-    vb = {json.loads(x)["so_hieu"]: json.loads(x) for x in (OUT / "van_ban.jsonl").read_text(encoding="utf-8").splitlines()}
+    # Bộ luật gốc (Phần 1) + văn bản hướng dẫn (Phần 3): cùng được áp sửa đổi, dựng phiên bản, cắt chunk
+    vb = {}
+    for name in ("van_ban.jsonl", "huong_dan_van_ban.jsonl"):
+        if (OUT / name).exists():
+            vb.update({json.loads(x)["so_hieu"]: json.loads(x) for x in (OUT / name).read_text(encoding="utf-8").splitlines()})
     base = defaultdict(dict)
-    for line in (OUT / "dieu.jsonl").read_text(encoding="utf-8").splitlines():
+    dieu_lines = (OUT / "dieu.jsonl").read_text(encoding="utf-8").splitlines()
+    if (OUT / "huong_dan_dieu.jsonl").exists():
+        dieu_lines += (OUT / "huong_dan_dieu.jsonl").read_text(encoding="utf-8").splitlines()
+    for line in dieu_lines:
         r = json.loads(line)
         base[r["so_hieu"]][r["so_dieu"]] = {k: r[k] for k in ("so_dieu", "thu_tu", "tieu_de", "vi_tri", "doan_dan", "diem", "khoan", "trang_thai")}
     lenh = [json.loads(x) for x in (OUT / "lenh_sua_doi.jsonl").read_text(encoding="utf-8").splitlines()]
@@ -436,13 +448,13 @@ def main() -> int:
         # Gom thao tác nhắm bộ luật này
         viec = []    # (ngày, thứ tự, lệnh, op|None)
         for c in lenh:
-            if c["loai"] == "khung":
+            if c["loai"] in ("khung", "mau"):
                 continue
             if c["loai"] == "cum_tu":
                 for i, op in enumerate(c["cum_tu"]):
-                    if op["bo_luat"] == sh:
+                    if _cung_vb(op["bo_luat"], sh):
                         viec.append((c["ngay_hieu_luc"], thu_tu_vb[c["van_ban"]], c["dong"], i, c, op))
-            elif c["bo_luat"] == sh:
+            elif _cung_vb(c["bo_luat"], sh):
                 viec.append((c["ngay_hieu_luc"], thu_tu_vb[c["van_ban"]], c["dong"], -1, c, None))
         viec.sort(key=lambda x: (x[0] or "9999", x[1], x[2], x[3]))
 
@@ -524,7 +536,7 @@ def main() -> int:
                     lst[-1]["valid_to"] = r["valid_from"]
                 lst.append({"chunk_id": ch["chunk_id"], "phien_ban_id": f"{ch['chunk_id']}@{r['valid_from']}",
                             "dieu_id": did, "dieu_phien_ban_id": r["phien_ban_id"], "so_hieu": r["so_hieu"],
-                            "nhom": "goc", "loai_van_ban": v["loai"], "linh_vuc": v["linh_vuc"], "cap": ch["cap"],
+                            "nhom": v["nhom"], "loai_van_ban": v["loai"], "linh_vuc": v["linh_vuc"], "cap": ch["cap"],
                             "trich_dan": ch["trich_dan"], "text": ch["text"], "noi_dung": ch["noi_dung"],
                             "so_tu": ch["so_tu"], "valid_from": r["valid_from"], "valid_to": r["valid_to"],
                             "nguon_thay_doi": r["nguon_thay_doi"], "sha256": h,

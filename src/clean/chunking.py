@@ -39,7 +39,8 @@ def _trich_dan(vb: dict, so_dieu: str, khoan=None, diem=None) -> str:
     if khoan is not None:
         parts.append(f"khoản {khoan}" if parts else f"Khoản {khoan}")
     parts.append(f"Điều {so_dieu}")
-    return " ".join(parts) + f" {vb['ten']} {vb['nam']}"
+    # Bộ luật: "… Bộ luật Hình sự 2015"; văn bản hướng dẫn: "… Nghị quyết 02/2018/NQ-HĐTP"
+    return " ".join(parts) + " " + (vb.get("ten_trich_dan") or f"{vb['ten']} {vb['nam']}")
 
 
 def chunk_dieu(vb: dict, dieu: dict) -> list[dict]:
