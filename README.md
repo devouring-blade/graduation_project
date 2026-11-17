@@ -25,18 +25,39 @@ Dùng chung: `html_text.py` (HTML → dòng chữ), `cau_truc.py` (dòng → câ
 
 ## Kết quả (`data/processed/`)
 
-| File | Nội dung | Dùng để |
+Đơn vị đưa cho agent là **cả một Điều**; chunk chỉ để tìm kiếm và luôn trỏ về Điều.
+
+| File | Mỗi dòng | Dùng để |
 | --- | --- | --- |
-| `corpus_luat.jsonl` | Chunk Điều luật, có `valid_from`/`valid_to` | **Tìm kiếm** |
-| `corpus_huong_dan.jsonl` | Chunk văn bản hướng dẫn | Tìm phụ; chunk trúng → kéo Điều luật cha qua `huong_dan_cho` |
-| `huong_dan_toan_van.jsonl` | Toàn văn từng văn bản hướng dẫn theo phiên bản | Đưa cho agent khi đã có Điều luật: lấy `so_hieu` trong `huong_dan_boi`, chọn bản có hiệu lực tại ngày cần hỏi |
-| `van_ban.jsonl` | Thông tin mọi văn bản (tên, loại, ngày hiệu lực…) | Hiển thị, trích dẫn |
+| `dieu_luat.jsonl` | Một **Điều luật hoàn chỉnh** (một phiên bản, `valid_from`/`valid_to`) + `huong_dan`: các Điều hướng dẫn liên quan, ghi rõ Khoản/Điểm luật được hướng dẫn và chỗ hướng dẫn | Đưa cho agent |
+| `huong_dan.jsonl` | Một **Điều của văn bản hướng dẫn hoàn chỉnh** (một phiên bản) + `huong_dan_cho`: các Điều luật nó hướng dẫn | Đưa cho agent |
+| `chunk_luat.jsonl` | Chunk cắt từ Điều luật; `dieu_id` = Điều cha | Tìm kiếm |
+| `chunk_huong_dan.jsonl` | Chunk cắt từ hướng dẫn; `dieu_luat` = các Điều luật đoạn này hướng dẫn | Tìm kiếm |
+| `van_ban.jsonl` | Thông tin văn bản (tên, loại, ngày hiệu lực, đường dẫn vbpl) | Hiển thị, trích dẫn |
 | `thong_ke.json` | Số liệu tổng hợp | |
 
 `trung_gian/` chứa dữ liệu giữa các bước (cây Điều, câu lệnh sửa đổi, phiên bản Điều, nhật ký áp lệnh).
 
 Chunk theo cấu trúc: Điều ngắn (≤ 400 từ) = 1 chunk; Điều dài → mỗi Khoản (kèm tên Điều, câu dẫn
 Điều); Khoản dài → mỗi Điểm (kèm tên Điều, câu dẫn Điều, câu dẫn Khoản).
+
+Liên kết hướng dẫn → Điều luật chỉ lấy từ chữ của văn bản (không đoán): đoạn nêu rõ "… Điều 65 của Bộ luật
+Hình sự" (`dan_chieu`), hoặc tên văn bản nêu Điều (`trich_yeu`; tên nêu một Điều → mọi đoạn; nêu nhiều Điều →
+chỉ đoạn không tự nêu Điều nào).
+
+## Chiến lược truy xuất (thiết kế cho bước tiếp theo)
+
+Đầu vào: câu hỏi, ngày của sự việc (mặc định hôm nay), số Điều cần lấy K.
+
+1. Tìm trên `chunk_luat` và `chunk_huong_dan` (chỉ chunk có hiệu lực tại ngày đó), xếp theo điểm.
+2. Lấy dần chunk theo thứ tự điểm và cộng điểm cho **Điều luật**:
+   - chunk luật → cộng vào Điều cha (`dieu_id`);
+   - chunk hướng dẫn → cộng vào các Điều luật trong `dieu_luat` (có thể nhân hệ số nhỏ hơn).
+3. Dừng khi đã có **đủ K Điều luật khác nhau** (không cố định top-k chunk).
+4. Lấy K Điều hoàn chỉnh từ `dieu_luat.jsonl` (phiên bản tại ngày đó) kèm các Điều hướng dẫn trong
+   `huong_dan` (lọc theo ngày; đọc nguyên văn từ `huong_dan.jsonl`).
+5. Agent chọn Điều phù hợp câu hỏi, trả lời dẫn căn cứ Điều luật trước, hướng dẫn sau, kèm trích dẫn
+   và đường dẫn vbpl.
 
 ## Cấu hình và đầu vào
 
@@ -46,7 +67,8 @@ Chunk theo cấu trúc: Điều ngắn (≤ 400 từ) = 1 chunk; Điều dài �
 
 ## Trạng thái
 
-- 3.445 chunk luật, 854 chunk hướng dẫn (537 có liên kết tới Điều luật), toàn văn 31 văn bản hướng dẫn.
+- 2.425 phiên bản Điều luật (211 có hướng dẫn), 355 phiên bản Điều hướng dẫn (213 có liên kết) từ 31 văn bản;
+  3.445 chunk luật, 854 chunk hướng dẫn.
 - 464 thao tác sửa đổi đã áp. Chưa áp 4: BLTTHS Điều 333, 454, 496 (mốc chèn xuất hiện nhiều lần);
   NQ 03/2024 Điều 3 khoản 3 (không có cụm cần thay).
 - `02/2020/NQ-HĐTP` chưa đưa vào: file thực chất là Thông tư 02/2020/TT-TANDTC, không hướng dẫn 4 bộ luật.

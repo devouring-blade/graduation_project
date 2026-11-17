@@ -9,7 +9,7 @@ Xoá data/processed rồi chạy lần lượt; bước nào lỗi thì dừng.
   4. ap_lenh          áp sửa đổi, dựng phiên bản theo thời gian, cắt chunk
   5. lien_ket         liên kết hướng dẫn <-> Điều luật, xuất kết quả cuối
 
-Kết quả cuối (data/processed/): corpus_luat.jsonl, corpus_huong_dan.jsonl, huong_dan_toan_van.jsonl,
+Kết quả cuối (data/processed/): dieu_luat.jsonl, huong_dan.jsonl, chunk_luat.jsonl, chunk_huong_dan.jsonl,
 van_ban.jsonl, thong_ke.json. Dữ liệu trung gian: data/processed/trung_gian/.
 """
 from __future__ import annotations

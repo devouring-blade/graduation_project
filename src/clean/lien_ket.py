@@ -1,22 +1,22 @@
-"""Bước 5: liên kết hai chiều văn bản hướng dẫn <-> Điều luật, xuất kết quả cuối.
+"""Bước 5: liên kết hướng dẫn <-> Điều luật, xuất kết quả cuối.
 
-Chunk hướng dẫn: huong_dan_cho = [{dieu_id, khoan, diem, dieu_phien_ban_id, trang_thai, nguon}]
-    - nguon "dan_chieu": chunk nêu rõ "… Điều 65 của Bộ luật Hình sự", "Điều 65 BLHS", "Tội … (Điều 248)".
-    - nguon "trich_yeu": trích yếu văn bản nêu Điều ("Hướng dẫn áp dụng Điều 65 của Bộ luật Hình sự")
-      -> gắn cho mọi chunk của văn bản đó.
-    - trang_thai "khop": Điều chưa đổi kể từ khi hướng dẫn có hiệu lực; "viet_cho_ban_cu": Điều có phiên
-      bản mới bắt đầu sau ngày hướng dẫn có hiệu lực (khi hướng dẫn còn hiệu lực).
-    - Chunk không nêu Điều nào và văn bản có trích yếu chung chung -> huong_dan_cho rỗng.
-Chunk Điều luật: huong_dan_boi = [{so_hieu, chunk_id, phien_ban_id, trang_thai}] – gắn vào chunk của đúng
-    Điều (đúng Khoản nếu nêu) khi hai khoảng hiệu lực giao nhau.
+Đơn vị đưa cho agent là CẢ MỘT ĐIỀU (luật hoặc hướng dẫn), kèm liên kết hai chiều; chunk chỉ để tìm kiếm
+và luôn trỏ về Điều cha.
+
+Liên kết lấy từ chữ của văn bản hướng dẫn (không đoán):
+    - nguon "dan_chieu": đoạn hướng dẫn nêu rõ "… điểm b khoản 1 Điều 51 của Bộ luật Hình sự", "Điều 65 BLHS",
+      "Tội … (Điều 248)".
+    - nguon "trich_yeu": tên văn bản nêu Điều ("Hướng dẫn áp dụng Điều 65 của Bộ luật Hình sự") -> mọi đoạn
+      của văn bản đó hướng dẫn Điều này.
+    - trang_thai "khop" / "viet_cho_ban_cu": Điều luật có (hoặc không) phiên bản mới sau ngày hướng dẫn có hiệu lực.
 
 Kết quả cuối (data/processed/):
-    corpus_luat.jsonl        chunk Điều luật – kho dùng để tìm kiếm
-    corpus_huong_dan.jsonl   chunk hướng dẫn – tìm phụ / tra theo mã từ huong_dan_boi
-    huong_dan_toan_van.jsonl toàn văn từng văn bản hướng dẫn theo phiên bản [valid_from, valid_to) –
-                             đưa cho agent khi đã có Điều luật (tra bằng so_hieu + ngày)
-    van_ban.jsonl            thông tin mọi văn bản trong corpus
-    thong_ke.json
+    dieu_luat.jsonl        mỗi dòng một phiên bản Điều luật hoàn chỉnh + huong_dan (mọi Điều hướng dẫn liên quan,
+                           ghi rõ Khoản/Điểm luật được hướng dẫn và chỗ hướng dẫn)
+    huong_dan.jsonl        mỗi dòng một phiên bản Điều của văn bản hướng dẫn hoàn chỉnh + huong_dan_cho
+    chunk_luat.jsonl       chunk tìm kiếm cắt từ Điều luật; dieu_id = Điều cha
+    chunk_huong_dan.jsonl  chunk tìm kiếm cắt từ hướng dẫn; dieu_luat = các Điều luật mà đoạn này hướng dẫn
+    van_ban.jsonl          thông tin mọi văn bản; thong_ke.json
 """
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from build_goc import read_jsonl, write_jsonl  # noqa: E402
 from cau_truc import render_dieu_body  # noqa: E402
+from chunking import _header, _trich_dan  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "data" / "processed"
@@ -104,115 +105,131 @@ def _mo_rong(sh: str, g: dict) -> list[tuple]:
     return out
 
 
-def toan_van(vb: dict, dieu_rows: list[dict]) -> list[dict]:
-    """Toàn văn một văn bản hướng dẫn cho mỗi khoảng thời gian mà nội dung không đổi."""
-    rows = [r for r in dieu_rows if not r["chua_tung_ap_dung"]]
-    moc = sorted({r["valid_from"] for r in rows} | {r["valid_to"] for r in rows if r["valid_to"]})
-    out = []
-    for i, a in enumerate(moc):
-        b = moc[i + 1] if i + 1 < len(moc) else None
-        hl = sorted((r for r in rows if r["trang_thai"] == "hieu_luc" and r["valid_from"] <= a
-                     and (r["valid_to"] is None or a < r["valid_to"])), key=lambda r: r["thu_tu"])
-        if not hl:
-            continue
-        text = vb["ten"] + "\n\n" + "\n\n".join(
-            f"Điều {r['so_dieu']}. {r['tieu_de']}".rstrip(". ") + "\n" + render_dieu_body(r) for r in hl)
-        if out and out[-1]["text"] == text:
-            out[-1]["valid_to"] = b
-            continue
-        out.append({"phien_ban_id": f"{vb['so_hieu']}@{a}", "so_hieu": vb["so_hieu"], "ten": vb["ten"],
-                    "ten_trich_dan": vb["ten_trich_dan"], "loai": vb["loai"],
-                    "huong_dan_bo_luat": vb["huong_dan_bo_luat"], "valid_from": a, "valid_to": b,
-                    "so_dieu": len(hl), "so_tu": len(text.split()), "text": text})
-    return out
+def _giao(a: dict, b: dict) -> bool:
+    """Hai khoảng hiệu lực [valid_from, valid_to) giao nhau."""
+    return (a["valid_to"] is None or b["valid_from"] < a["valid_to"]) and \
+           (b["valid_to"] is None or a["valid_from"] < b["valid_to"])
+
+
+def _dieu(vb: dict, r: dict) -> dict:
+    """Bản ghi Điều hoàn chỉnh (luật hoặc hướng dẫn) từ một phiên bản Điều."""
+    body = render_dieu_body(r) if r["trang_thai"] == "hieu_luc" else "(Điều này đã bị bãi bỏ)"
+    return {"phien_ban_id": r["phien_ban_id"], "dieu_id": r["dieu_id"], "so_hieu": r["so_hieu"],
+            "so_dieu": r["so_dieu"], "tieu_de": r["tieu_de"], "trich_dan": _trich_dan(vb, r["so_dieu"]),
+            "ten_van_ban": vb["ten"], "text": _header(vb, r) + "\n" + body,
+            "trang_thai": r["trang_thai"], "valid_from": r["valid_from"], "valid_to": r["valid_to"],
+            "nguon_thay_doi": r["nguon_thay_doi"], "url": vb.get("url")}
 
 
 def main() -> int:
     vb_goc = read_jsonl(TG / "goc_van_ban.jsonl")
     vb_hd = read_jsonl(TG / "huong_dan_van_ban.jsonl")
-    vb = {r["so_hieu"]: r for r in vb_hd}
+    vb = {r["so_hieu"]: r for r in vb_goc + vb_hd}
     chunks = read_jsonl(TG / "chunks_phien_ban.jsonl")
-    dieu_pb = read_jsonl(TG / "dieu_phien_ban.jsonl")
-    versions = defaultdict(list)          # dieu_id -> [(valid_from, valid_to, phien_ban_id)] của bộ luật gốc
+    dieu_pb = [r for r in read_jsonl(TG / "dieu_phien_ban.jsonl") if not r["chua_tung_ap_dung"]]
+    luat_pb = defaultdict(list)            # dieu_id luật -> các phiên bản
     for r in dieu_pb:
-        if r["so_hieu"] in GOC and not r["chua_tung_ap_dung"]:
-            versions[r["dieu_id"]].append((r["valid_from"], r["valid_to"], r["phien_ban_id"]))
-    for v in versions.values():
-        v.sort()
+        if r["so_hieu"] in GOC:
+            luat_pb[r["dieu_id"]].append(r)
 
-    def lien_ket(sh, n, k, p, gf, gt, nguon):
-        did = f"{sh}#D{n}"
-        vs = versions.get(did)
-        if not vs:
-            return None
-        at = next((v for v in vs if v[0] <= gf and (v[1] is None or gf < v[1])), None)
-        doi_sau = any(v[0] > gf and (gt is None or v[0] < gt) for v in vs)
-        return {"dieu_id": did, "khoan": k, "diem": p, "dieu_phien_ban_id": at[2] if at else None,
-                "trang_thai": "viet_cho_ban_cu" if doi_sau else "khop", "nguon": nguon}
+    def trang_thai(dieu_id: str, ref: dict) -> str:
+        """Điều luật có phiên bản mới bắt đầu sau ngày hướng dẫn có hiệu lực (khi hướng dẫn còn hiệu lực)?"""
+        doi = any(v["valid_from"] > ref["valid_from"] and (ref["valid_to"] is None or v["valid_from"] < ref["valid_to"])
+                  for v in luat_pb[dieu_id])
+        return "viet_cho_ban_cu" if doi else "khop"
 
-    tk = Counter()
+    # 1) liên kết ở mức chunk hướng dẫn (chỗ nêu Điều luật)
     for c in chunks:
         if c["nhom"] != "huong_dan":
             continue
         v = vb[c["so_hieu"]]
         links = []
+        so_dieu_trich_yeu = len({(sh, n) for sh, n, _, _ in dan_chieu(v["trich_yeu"])})
         for nguon, text in (("dan_chieu", c["noi_dung"]), ("trich_yeu", v["trich_yeu"])):
+            # Tên văn bản nêu MỘT Điều (NQ 02/2018 -> Điều 65): mọi đoạn đều hướng dẫn Điều đó.
+            # Tên nêu NHIỀU Điều (NQ 04/2025 -> Điều 51, 52): chỉ dùng cho đoạn không tự nêu Điều nào.
+            if nguon == "trich_yeu" and so_dieu_trich_yeu > 1 and links:
+                continue
             refs = dan_chieu(text)
             # Văn bản hướng dẫn BLHS ghi tội kèm số Điều trong ngoặc: "Tội sản xuất trái phép chất ma túy (Điều 248)"
             if "100/2015/QH13" in v["huong_dan_bo_luat"]:
                 refs += [("100/2015/QH13", m.group(1), None, None)
                          for m in re.finditer(r"\bTội\s[^()]{3,150}?\(\s*(?:quy định tại\s+)?Điều\s+(\d+[a-zđ]?)\s*\)", text)]
             for sh, n, k, p in dict.fromkeys(refs):
-                if any(l["dieu_id"] == f"{sh}#D{n}" and l["khoan"] in (k, None) for l in links):
+                did = f"{sh}#D{n}"
+                if did not in luat_pb or any(l["dieu_id"] == did and l["khoan"] in (k, None) for l in links):
                     continue
-                l = lien_ket(sh, n, k, p, c["valid_from"], c["valid_to"], nguon)
-                if l:
-                    links.append(l)
-        c["huong_dan_cho"] = links
-        tk["chunk_huong_dan_co_lien_ket"] += bool(links)
+                links.append({"dieu_id": did, "khoan": k, "diem": p, "nguon": nguon})
+        c["lien_ket"] = links
 
-    # chiều ngược: gắn vào chunk Điều luật
-    by_dieu = defaultdict(list)
+    # 2) Điều hướng dẫn hoàn chỉnh: gom liên kết của các chunk thuộc Điều đó (cùng thời gian)
+    chunk_by_dieu = defaultdict(list)
     for c in chunks:
-        if c["nhom"] == "goc":
-            c["huong_dan_boi"] = []
-            by_dieu[c["dieu_id"]].append(c)
-    for h in chunks:
-        if h["nhom"] != "huong_dan":
+        chunk_by_dieu[c["dieu_id"]].append(c)
+    huong_dan = []
+    for r in dieu_pb:
+        if r["so_hieu"] in GOC:
             continue
-        for l in h["huong_dan_cho"]:
-            for c in by_dieu.get(l["dieu_id"], []):
-                hop_khoan = l["khoan"] is None or c["chunk_id"] == c["dieu_id"] or \
-                    c["chunk_id"].startswith(f"{c['dieu_id']}#K{l['khoan']}")
-                giao = (c["valid_to"] is None or h["valid_from"] < c["valid_to"]) and \
-                       (h["valid_to"] is None or c["valid_from"] < h["valid_to"])
-                if hop_khoan and giao and not any(x["phien_ban_id"] == h["phien_ban_id"] and x["khoan"] == l["khoan"]
-                                                  and x["diem"] == l["diem"] for x in c["huong_dan_boi"]):
-                    c["huong_dan_boi"].append({
-                        # chỗ được hướng dẫn trong Điều luật (None = cả Điều)
-                        "khoan": l["khoan"], "diem": l["diem"],
-                        # chỗ hướng dẫn: văn bản, chunk, câu trích dẫn để trình bày cho người dùng
-                        "so_hieu": h["so_hieu"], "chunk_id": h["chunk_id"], "phien_ban_id": h["phien_ban_id"],
-                        "trich_dan": h["trich_dan"], "nguon": l["nguon"],
-                        "trang_thai": "viet_cho_ban_cu" if c["valid_from"] > h["valid_from"] else "khop"})
+        rec = _dieu(vb[r["so_hieu"]], r)
+        cho = []
+        for c in chunk_by_dieu[r["dieu_id"]]:
+            if not _giao(c, r):
+                continue
+            for l in c["lien_ket"]:
+                e = {**l, "cho_huong_dan": c["trich_dan"], "chunk_id": c["chunk_id"],
+                     "trang_thai": trang_thai(l["dieu_id"], r)}
+                if e not in cho:
+                    cho.append(e)
+        rec["huong_dan_cho"] = cho
+        huong_dan.append(rec)
 
-    luat = [c for c in chunks if c["nhom"] == "goc"]
-    hd = [c for c in chunks if c["nhom"] == "huong_dan"]
-    tv = [x for so_hieu, v in vb.items() for x in toan_van(v, [r for r in dieu_pb if r["so_hieu"] == so_hieu])]
-    write_jsonl(OUT / "corpus_luat.jsonl", luat)
-    write_jsonl(OUT / "corpus_huong_dan.jsonl", hd)
-    write_jsonl(OUT / "huong_dan_toan_van.jsonl", tv)
+    # 3) Điều luật hoàn chỉnh: mọi Điều hướng dẫn có liên kết tới Điều này, khi hai khoảng hiệu lực giao nhau
+    hd_by_luat = defaultdict(list)
+    for h in huong_dan:
+        for l in h["huong_dan_cho"]:
+            hd_by_luat[l["dieu_id"]].append((h, l))
+    dieu_luat = []
+    for r in dieu_pb:
+        if r["so_hieu"] not in GOC:
+            continue
+        rec = _dieu(vb[r["so_hieu"]], r)
+        nhom = {}
+        for h, l in hd_by_luat[r["dieu_id"]]:
+            if not _giao(h, r):
+                continue
+            g = nhom.setdefault(h["phien_ban_id"], {
+                "huong_dan_id": h["phien_ban_id"], "so_hieu": h["so_hieu"], "trich_dan": h["trich_dan"],
+                "valid_from": h["valid_from"], "valid_to": h["valid_to"],
+                "trang_thai": "viet_cho_ban_cu" if r["valid_from"] > h["valid_from"] else "khop", "chi_tiet": []})
+            ct = {"khoan": l["khoan"], "diem": l["diem"], "cho_huong_dan": l["cho_huong_dan"], "nguon": l["nguon"]}
+            if ct not in g["chi_tiet"]:
+                g["chi_tiet"].append(ct)
+        rec["huong_dan"] = list(nhom.values())
+        dieu_luat.append(rec)
+
+    # 4) chunk tìm kiếm
+    giu = ("chunk_id", "phien_ban_id", "dieu_id", "so_hieu", "cap", "trich_dan", "text", "so_tu", "valid_from", "valid_to")
+    chunk_luat = [{k: c[k] for k in giu} for c in chunks if c["nhom"] == "goc"]
+    chunk_hd = [{**{k: c[k] for k in giu}, "dieu_luat": [{k: l[k] for k in ("dieu_id", "khoan", "diem")} for l in c["lien_ket"]]}
+                for c in chunks if c["nhom"] == "huong_dan"]
+
+    write_jsonl(OUT / "dieu_luat.jsonl", dieu_luat)
+    write_jsonl(OUT / "huong_dan.jsonl", huong_dan)
+    write_jsonl(OUT / "chunk_luat.jsonl", chunk_luat)
+    write_jsonl(OUT / "chunk_huong_dan.jsonl", chunk_hd)
     write_jsonl(OUT / "van_ban.jsonl", vb_goc + vb_hd)
     nk = read_jsonl(TG / "ap_lenh_nhat_ky.jsonl")
-    tk.update({"chunk_luat": len(luat), "chunk_luat_dang_hieu_luc": sum(c["valid_to"] is None for c in luat),
-               "chunk_luat_co_huong_dan": sum(bool(c["huong_dan_boi"]) for c in luat),
-               "chunk_huong_dan": len(hd), "van_ban_huong_dan": len(vb_hd), "toan_van_phien_ban": len(tv),
-               "thao_tac_sua_doi_da_ap": sum(e["ket_qua"] == "da_ap" for e in nk),
-               "thao_tac_sua_doi_chua_ap": sum(e["ket_qua"] == "loi" for e in nk)})
+    tk = {"dieu_luat": len(dieu_luat), "dieu_luat_dang_hieu_luc": sum(r["valid_to"] is None for r in dieu_luat),
+          "dieu_luat_co_huong_dan": sum(bool(r["huong_dan"]) for r in dieu_luat),
+          "huong_dan": len(huong_dan), "huong_dan_co_lien_ket": sum(bool(r["huong_dan_cho"]) for r in huong_dan),
+          "chunk_luat": len(chunk_luat), "chunk_huong_dan": len(chunk_hd),
+          "chunk_huong_dan_co_lien_ket": sum(bool(c["dieu_luat"]) for c in chunk_hd),
+          "van_ban_huong_dan": len(vb_hd),
+          "thao_tac_sua_doi_da_ap": sum(e["ket_qua"] == "da_ap" for e in nk),
+          "thao_tac_sua_doi_chua_ap": sum(e["ket_qua"] == "loi" for e in nk)}
     (OUT / "thong_ke.json").write_text(json.dumps(tk, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"  corpus_luat {tk['chunk_luat']} chunk ({tk['chunk_luat_co_huong_dan']} có hướng dẫn) | "
-          f"corpus_huong_dan {tk['chunk_huong_dan']} chunk ({tk['chunk_huong_dan_co_lien_ket']} có liên kết) | "
-          f"toàn văn {tk['toan_van_phien_ban']} bản / {tk['van_ban_huong_dan']} văn bản")
+    print(f"  dieu_luat {tk['dieu_luat']} ({tk['dieu_luat_co_huong_dan']} có hướng dẫn) | huong_dan {tk['huong_dan']} "
+          f"({tk['huong_dan_co_lien_ket']} có liên kết) | chunk_luat {tk['chunk_luat']} | chunk_huong_dan {tk['chunk_huong_dan']}")
     return 0
 
 
