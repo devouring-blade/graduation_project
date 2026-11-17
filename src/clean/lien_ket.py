@@ -186,10 +186,15 @@ def main() -> int:
                     c["chunk_id"].startswith(f"{c['dieu_id']}#K{l['khoan']}")
                 giao = (c["valid_to"] is None or h["valid_from"] < c["valid_to"]) and \
                        (h["valid_to"] is None or c["valid_from"] < h["valid_to"])
-                if hop_khoan and giao and not any(x["phien_ban_id"] == h["phien_ban_id"] for x in c["huong_dan_boi"]):
-                    c["huong_dan_boi"].append({"so_hieu": h["so_hieu"], "chunk_id": h["chunk_id"],
-                                               "phien_ban_id": h["phien_ban_id"],
-                                               "trang_thai": "viet_cho_ban_cu" if c["valid_from"] > h["valid_from"] else "khop"})
+                if hop_khoan and giao and not any(x["phien_ban_id"] == h["phien_ban_id"] and x["khoan"] == l["khoan"]
+                                                  and x["diem"] == l["diem"] for x in c["huong_dan_boi"]):
+                    c["huong_dan_boi"].append({
+                        # chỗ được hướng dẫn trong Điều luật (None = cả Điều)
+                        "khoan": l["khoan"], "diem": l["diem"],
+                        # chỗ hướng dẫn: văn bản, chunk, câu trích dẫn để trình bày cho người dùng
+                        "so_hieu": h["so_hieu"], "chunk_id": h["chunk_id"], "phien_ban_id": h["phien_ban_id"],
+                        "trich_dan": h["trich_dan"], "nguon": l["nguon"],
+                        "trang_thai": "viet_cho_ban_cu" if c["valid_from"] > h["valid_from"] else "khop"})
 
     luat = [c for c in chunks if c["nhom"] == "goc"]
     hd = [c for c in chunks if c["nhom"] == "huong_dan"]
