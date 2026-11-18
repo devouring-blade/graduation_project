@@ -5,7 +5,7 @@ cắt chunk cho từng phiên bản.
     vào: goc_*.jsonl, huong_dan_*.jsonl, lenh_sua_doi.jsonl
     ra : dieu_phien_ban.jsonl    mỗi dòng một phiên bản Điều [valid_from, valid_to)
          chunks_phien_ban.jsonl  chunk theo phiên bản; chunk không đổi chữ thì giữ một bản (kéo dài hiệu lực)
-         ap_lenh_nhat_ky.jsonl   mỗi thao tác sửa đổi: đã áp / lỗi + lý do
+    Thao tác sửa đổi không áp được in ra màn hình kèm lý do.
 Nguyên tắc:
 - Câu lệnh áp theo thứ tự ngày hiệu lực; không sửa đè – phiên bản cũ đóng lại bằng valid_to.
 - Câu lệnh nào không áp được chắc chắn -> ghi lỗi, KHÔNG áp, không đoán.
@@ -564,7 +564,6 @@ def main() -> int:
         return 1
     write_jsonl(TG / "dieu_phien_ban.jsonl", dieu_rows)
     write_jsonl(TG / "chunks_phien_ban.jsonl", chunk_rows)
-    write_jsonl(TG / "ap_lenh_nhat_ky.jsonl", nhat_ky)
     kq = Counter((e["bo_luat"], e["ket_qua"]) for e in nhat_ky)
     for sh, t in tk.items():
         if kq[(sh, "da_ap")] or kq[(sh, "loi")]:

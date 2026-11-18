@@ -16,7 +16,7 @@ Kết quả cuối (data/processed/):
     huong_dan.jsonl        mỗi dòng một phiên bản Điều của văn bản hướng dẫn hoàn chỉnh + huong_dan_cho
     chunk_luat.jsonl       chunk tìm kiếm cắt từ Điều luật; dieu_id = Điều cha
     chunk_huong_dan.jsonl  chunk tìm kiếm cắt từ hướng dẫn; dieu_luat = các Điều luật mà đoạn này hướng dẫn
-    van_ban.jsonl          thông tin mọi văn bản; thong_ke.json
+    van_ban.jsonl          thông tin mọi văn bản (tên, loại, ngày hiệu lực, đường dẫn vbpl)
 """
 from __future__ import annotations
 
@@ -218,18 +218,9 @@ def main() -> int:
     write_jsonl(OUT / "chunk_luat.jsonl", chunk_luat)
     write_jsonl(OUT / "chunk_huong_dan.jsonl", chunk_hd)
     write_jsonl(OUT / "van_ban.jsonl", vb_goc + vb_hd)
-    nk = read_jsonl(TG / "ap_lenh_nhat_ky.jsonl")
-    tk = {"dieu_luat": len(dieu_luat), "dieu_luat_dang_hieu_luc": sum(r["valid_to"] is None for r in dieu_luat),
-          "dieu_luat_co_huong_dan": sum(bool(r["huong_dan"]) for r in dieu_luat),
-          "huong_dan": len(huong_dan), "huong_dan_co_lien_ket": sum(bool(r["huong_dan_cho"]) for r in huong_dan),
-          "chunk_luat": len(chunk_luat), "chunk_huong_dan": len(chunk_hd),
-          "chunk_huong_dan_co_lien_ket": sum(bool(c["dieu_luat"]) for c in chunk_hd),
-          "van_ban_huong_dan": len(vb_hd),
-          "thao_tac_sua_doi_da_ap": sum(e["ket_qua"] == "da_ap" for e in nk),
-          "thao_tac_sua_doi_chua_ap": sum(e["ket_qua"] == "loi" for e in nk)}
-    (OUT / "thong_ke.json").write_text(json.dumps(tk, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"  dieu_luat {tk['dieu_luat']} ({tk['dieu_luat_co_huong_dan']} có hướng dẫn) | huong_dan {tk['huong_dan']} "
-          f"({tk['huong_dan_co_lien_ket']} có liên kết) | chunk_luat {tk['chunk_luat']} | chunk_huong_dan {tk['chunk_huong_dan']}")
+    print(f"  dieu_luat {len(dieu_luat)} ({sum(bool(r['huong_dan']) for r in dieu_luat)} có hướng dẫn) | "
+          f"huong_dan {len(huong_dan)} ({sum(bool(r['huong_dan_cho']) for r in huong_dan)} có liên kết) | "
+          f"chunk_luat {len(chunk_luat)} | chunk_huong_dan {len(chunk_hd)}")
     return 0
 
 

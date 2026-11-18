@@ -1,16 +1,16 @@
 """Chạy toàn bộ xử lý dữ liệu một mạch: data/raw -> data/processed.
 
-    venv\\Scripts\\python.exe src\\chay.py
+    venv\\Scripts\\python.exe src\\chay.py            # kết quả cuối, xoá dữ liệu trung gian
+    venv\\Scripts\\python.exe src\\chay.py --giu      # giữ data/processed/trung_gian/ để xem lại
 
-Xoá data/processed rồi chạy lần lượt; bước nào lỗi thì dừng.
   1. build_goc        tách 4 bộ luật gốc thành Điều/Khoản/Điểm
   2. build_huong_dan  tách các văn bản hướng dẫn
   3. doc_lenh         đọc câu lệnh trong các văn bản sửa đổi
   4. ap_lenh          áp sửa đổi, dựng phiên bản theo thời gian, cắt chunk
-  5. lien_ket         liên kết hướng dẫn <-> Điều luật, xuất kết quả cuối
+  5. lien_ket         liên kết hướng dẫn <-> Điều luật, xuất kết quả
 
-Kết quả cuối (data/processed/): dieu_luat.jsonl, huong_dan.jsonl, chunk_luat.jsonl, chunk_huong_dan.jsonl,
-van_ban.jsonl, thong_ke.json. Dữ liệu trung gian: data/processed/trung_gian/.
+Kết quả (data/processed/): dieu_luat.jsonl, huong_dan.jsonl, chunk_luat.jsonl, chunk_huong_dan.jsonl,
+van_ban.jsonl. Bước nào lỗi thì dừng.
 """
 from __future__ import annotations
 
@@ -40,6 +40,8 @@ def main() -> int:
         if rc:
             print(f"DỪNG: bước {mod} lỗi (mã {rc})")
             return rc
+    if "--giu" not in sys.argv:
+        shutil.rmtree(OUT / "trung_gian", ignore_errors=True)
     print(f"Xong sau {time.time() - t0:.0f} giây. Kết quả: {OUT}")
     return 0
 

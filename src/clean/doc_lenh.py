@@ -367,19 +367,18 @@ def doc_van_ban(path: Path, so_hieu: str, cfg: dict, nhom: str = "sua_doi") -> t
 def main() -> int:
     cfg = json.loads(CONFIG.read_text(encoding="utf-8")) if CONFIG.exists() else {}
     rows = [json.loads(x) for x in (DATA / "raw" / "manifest.jsonl").read_text(encoding="utf-8").splitlines() if x.strip()]
-    all_cmd, metas = [], []
+    all_cmd, n_vb = [], 0
     for r in rows:
         if r["nhom"] not in ("sua_doi", "lien_quan"):
             continue
-        cmds, meta = doc_van_ban(DATA / r["file"], r["so_hieu"], cfg, r["nhom"])
+        cmds, _ = doc_van_ban(DATA / r["file"], r["so_hieu"], cfg, r["nhom"])
         all_cmd += cmds
-        metas.append(meta)
+        n_vb += 1
     TG.mkdir(parents=True, exist_ok=True)
     with (TG / "lenh_sua_doi.jsonl").open("w", encoding="utf-8", newline="\n") as f:
         for c in all_cmd:
             f.write(json.dumps(c, ensure_ascii=False) + "\n")
-    (TG / "van_ban_sua_doi.json").write_text(json.dumps(metas, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"  {len(all_cmd)} câu lệnh từ {len(metas)} văn bản sửa đổi")
+    print(f"  {len(all_cmd)} câu lệnh từ {n_vb} văn bản sửa đổi")
     return 0
 
 
